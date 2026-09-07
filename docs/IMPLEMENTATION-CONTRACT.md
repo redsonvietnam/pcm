@@ -631,7 +631,8 @@ Directory creation is idempotent. Creating an existing directory is not an error
 | File does not exist | Create file |
 | File exists with identical content | Skip write (idempotent) |
 | File exists with different content | Overwrite with package content |
-| File exists but is read-only | EXIT 1, error "Cannot write: <path> (file is read-only)" |
+| File exists but is read-only, core | EXIT 1, error "Cannot write: <path> (file is read-only)" |
+| File exists but is read-only, binding | Skip write — file is already preserved (read-only is consistent with preserve semantics) |
 
 ### 9.5 Behavior on Partial Installation
 
@@ -727,13 +728,17 @@ If a target path resolves to a governance path → skip file, log warning.
 
 ### 10.6 Manifest as Package-Managed
 
-The manifest is **generated** by the distribution mechanism. It is:
+The manifest is **generated** tooling state, NOT governance content. It is:
 
 - Created by `npx pcm init`
 - Updated by `pcm update` (future)
 - NOT project-owned governance content
-- OVERWRITTEN on re-init (it records what the distribution wrote)
-- NOT silently overwritten if user manually modified it — detect and report conflict
+
+**Manifest rewrite rules:**
+
+- If the existing manifest is valid and matches the current adapter/version, the manifest content remains unchanged — no rewrite needed
+- If the existing manifest is stale (different adapter, different version, incomplete state), the manifest is regenerated from current installation state
+- If the existing manifest was manually modified by the user and a conflict is detected (content differs from what distribution would generate), the distribution MUST NOT silently destroy that modification — preserve the existing manifest and report: "Manifest was manually modified. Current state: <expected>. Existing: <actual>. Manifest not overwritten. Run with --manifest-override to regenerate."
 
 ### 10.7 `managedFiles` Semantics
 
@@ -791,12 +796,15 @@ function writeOrSkip(targetPath, content, ownership):
     return  // idempotent, no write needed
 
   if ownership === "core" or ownership === "tooling":
+    if isReadOnly(targetPath):
+      EXIT 1: "Cannot write: <path> (file is read-only)"
     writeFile(targetPath, content)  // overwrite (package-managed)
     return
 
   if ownership === "binding":
     // PRESERVE local modification — do not overwrite
     // Binding is adapter-owned, project may customize it
+    // Read-only is consistent with preserve — no write attempted
     REPORT: "Binding file locally modified, preserving: <path>"
     return
 ```
@@ -813,9 +821,12 @@ function writeOrSkip(targetPath, content, ownership):
 | File exists with different content, tooling | tooling | Overwrite with generated content |
 | File exists with different content, binding | binding | **Preserve existing file** — do not overwrite |
 | File exists, governance path | governance | Refuse to write |
-| File is read-only | any | EXIT 1 |
+| File is read-only, core/tooling | core/tooling | EXIT 1 — cannot overwrite package-managed file |
+| File is read-only, binding | binding | **Preserve** — no write attempted (consistent with preserve semantics) |
 | Directory does not exist | any | Create directory tree |
-| Existing manifest exists | tooling | Read, validate, update or overwrite |
+| Existing manifest exists, valid and current | tooling | Skip — no rewrite needed (idempotent) |
+| Existing manifest exists, stale | tooling | Regenerate from current installation state |
+| Existing manifest exists, manually modified | tooling | **Preserve** — do not overwrite, report conflict |
 
 ### 11.4 Governance File Detection
 
@@ -846,7 +857,7 @@ A file is governance if:
 1. Manifest exists and is valid → check if same adapter
 2. Core files exist with identical content → skip write
 3. Binding files exist with identical content → skip write
-4. Manifest content remains unchanged (adapter, core paths, binding paths, managedFiles, state are identical; `initializedAt` is preserved from first init)
+4. Manifest content remains unchanged (adapter, core paths, binding paths, managedFiles, state are identical; `initializedAt` is preserved from first init). If manifest was manually modified, preserve it and report conflict.
 5. Output: "PCM initialized successfully. Adapter: <id>. Files written: 0."
 
 ### 12.3 Partial Init
@@ -856,7 +867,7 @@ A file is governance if:
 1. Manifest exists but `state` is `"partial"` or missing fields
 2. Core files written (even if some exist — core is package-managed)
 3. Binding files: only create if missing. Preserve locally modified binding files.
-4. Manifest overwritten with complete state
+4. Manifest regenerated with complete state (stale manifest is overwritten; manually modified manifest is preserved — see Section 10.6)
 5. Output: "PCM initialized successfully. Adapter: <id>. Files written: <count>."
 
 **Binding behavior during partial init:**
@@ -873,7 +884,7 @@ A file is governance if:
 2. OR core files are corrupted (empty, wrong content)
 3. Core files overwritten with correct content (core is package-managed)
 4. Binding files: only create if missing. Preserve locally modified binding files.
-5. Manifest overwritten with correct state
+5. Manifest regenerated with correct state (stale/invalid manifest is overwritten; manually modified manifest is preserved — see Section 10.6)
 6. Output: "PCM initialized successfully. Adapter: <id>. Files written: <count>."
 
 **Critical distinction — Invalid Installation vs Locally Customized Binding:**
@@ -913,6 +924,11 @@ When the manifest lists a binding path but the file does not exist on disk:
 - Output: "PCM initialized successfully. Adapter: <id>. Files written: <count>."
 - INFO printed: "Preserved locally modified binding: <path>"
 
+**If modified file is manifest (tooling state):**
+- File is **preserved** — NOT silently overwritten
+- Output: "PCM initialized successfully. Adapter: <id>. Files written: <count>."
+- INFO printed: "Manifest was manually modified. Current state: <expected>. Existing: <actual>. Manifest not overwritten."
+
 **If modified file is governance:**
 - File is NEVER touched
 - No warning (this is expected state)
@@ -925,7 +941,7 @@ When the manifest lists a binding path but the file does not exist on disk:
 2. Running package is version `"1.1.0"`
 3. Core files overwritten with new package content (core is package-managed)
 4. Binding files: only create if missing. Preserve locally modified binding files.
-5. Manifest updated with new version
+5. Manifest regenerated with new version (stale manifest is overwritten; manually modified manifest is preserved — see Section 10.6)
 6. Output: "PCM initialized successfully. Adapter: <id>. Files written: <count>."
 7. INFO printed: "Updated from distribution v1.0.0 to v1.1.0"
 
@@ -1050,6 +1066,7 @@ The CLI runs on Node.js, but the target repository does not require Node.js. The
 | L | Modified binding file | **Preserved, not overwritten** | Check binding file content unchanged after re-init |
 | M | Missing binding file (partial) | Create from bundled artifact | Check binding file exists with bundled content |
 | N | Invalid installation (missing core) | Repair core, preserve binding | Check core overwritten, binding preserved |
+| O | Manually modified manifest | Preserve manifest, report conflict | Check manifest unchanged after re-init, conflict reported |
 
 ### 15.2 Test Verification Method
 
@@ -1123,7 +1140,7 @@ Each layer operates within its defined scope.
 | 12 | Idempotency behavior defined? | **YES** — first/repeat/partial/invalid/manual-modification/different-version all specified |
 | 13 | Failure behavior defined? | **YES** — preflight checks, no atomicity, no rollback, exit 1 on error, no false success |
 | 14 | Portability defined? | **YES** — platform-neutral, no language assumptions, forward-slash paths |
-| 15 | Minimum test matrix defined? | **YES** — 14 scenarios (A–N), filesystem verification, determinism tests |
+| 15 | Minimum test matrix defined? | **YES** — 15 scenarios (A–O), filesystem verification, determinism tests |
 
 **ALL ANSWERS ARE YES.**
 
