@@ -557,7 +557,7 @@ Detection observes the environment. It answers:
 3. What git version?
 4. What tool capabilities are present? (opencode, copilot, codex, cursor, etc.)
 
-The result is an environment record containing: `platform`, `shell`, `gitVersion`, `capabilities` (map of capability names to presence/version).
+The result is an environment record containing: `platform`, `shell`, `gitVersion`, `capabilities` (map of capability names to presence).
 
 ### 14.2 What Detection Does NOT Do
 
@@ -619,14 +619,14 @@ Adapters are discovered through the package-bundled catalog. The catalog is the 
 2. Filter adapters by:
    - Platform match (windows/linux/macos)
    - Shell match (powershell/bash/zsh)
-   - Capability match (tool/capability requirements satisfied)
+   - Capability match (`requires` satisfied)
    - Tested status (tested/untested)
 3. If multiple adapters match → apply selection algorithm (Section 18)
 4. If no adapters match → use generic adapter (Section 17)
 
 ### 15.3 Discovery ≠ Selection ≠ Trust ≠ Resolution
 
-Discovery finds all candidates that match platform, shell, AND capability requirements. Trust policy filters to trusted candidates. Selection picks exactly one. Resolution maps the selection to bundled file content. These are separate steps.
+Discovery finds all candidates that match platform, shell, AND `requires`. Trust policy filters to trusted candidates. Selection picks exactly one. Resolution maps the selection to bundled file content. These are separate steps.
 
 ---
 
@@ -702,13 +702,17 @@ Bundled in the `pcm` npm package at `registry/pcm-adapters.json`. NOT a reposito
 
 ### 16.4 Capability Requirements (`requires`)
 
-The `requires` field declares what runtime capabilities the adapter needs to function. Each key is a capability name; each value is a version requirement string (`"*"` = any version).
+The `requires` field declares what runtime capabilities the adapter needs to function. Each key is a capability name; each value MUST be `"*"` in MVP.
 
-**Semantics:**
+**MVP Semantics:**
 - `null` — Adapter is technology-agnostic. No specific tool required. (Generic adapter.)
 - `{}` (empty object) — Equivalent to `null`. No capabilities required.
 - `{ "opencode": "*" }` — Requires OpenCode to be present in the environment.
-- `{ "copilot": ">=2.0" }` — Requires GitHub Copilot version 2.0 or higher.
+- `{ "copilot": "*" }` — Requires GitHub Copilot to be present in the environment.
+
+**MVP constraint:** All values MUST be `"*"`. Version constraints (e.g., `">=2.0"`) are NOT supported in MVP. The `capabilitiesSatisfied` function checks capability presence only — it does NOT compare versions.
+
+**Future extension (post-MVP):** Version constraints may be added by changing values from `"*"` to semver strings (e.g., `">=2.0"`). This would require updating `capabilitiesSatisfied` to perform version comparison. The catalog schema and algorithm are forward-compatible with this change, but it is NOT part of MVP scope.
 
 **Capability names** are identifiers for tools/runtimes that environment detection can observe. They are NOT PCM primitives. They are NOT adapter semantic capabilities. They are purely distribution-layer concerns for determining whether an adapter can bind to the observed environment.
 
@@ -825,13 +829,14 @@ function capabilitiesSatisfied(requires, envCapabilities):
   for each [capability, versionReq] in requires:
     if capability not in envCapabilities:
       return false
-    // version check omitted for MVP (any version satisfies "*")
+    // MVP: value is always "*", presence check only
+    // Future: version comparison against versionReq
   return true
 ```
 
 ### 18.2 Capability Compatibility
 
-A specialized adapter is ONLY selectable if its `requirements` are satisfied by the observed environment:
+A specialized adapter is ONLY selectable if its `requires` is satisfied by the observed environment:
 
 | Adapter | `requires` | Environment has OpenCode? | Environment has Copilot? | Capable? |
 |---------|-----------|---------------------------|--------------------------|----------|
@@ -914,10 +919,12 @@ An adapter progresses through six trust states:
 |-------|---------|--------------|
 | **DISCOVERABLE** | Adapter can be found in catalog | No — listed but not yet evaluated |
 | **DECLARED COMPATIBLE** | Adapter metadata says it supports the environment | No — declared but not yet trusted |
-| **TRUST EVALUATED** | Trust policy has been consulted | Depends on policy result |
+| **TRUST EVALUATED** | Trust policy has been consulted (after capability check passes) | Depends on policy result |
 | **ARTIFACT RESOLVED** | Bundled files have been located in package | No — resolved but not yet installed |
 | **TRUSTED** | Trust policy permits execution/use | Yes — can be selected and installed |
 | **INSTALLED** | Adapter is actually present in target repo | Yes — already in place |
+
+**Capability check** is NOT a trust state. It is a compatibility predicate that runs between DECLARED COMPATIBLE and TRUST EVALUATED. An adapter must pass capability check to be eligible for trust evaluation.
 
 ### 20.2 Trust Lifecycle
 
@@ -927,11 +934,10 @@ DISCOVERABLE
   ▼
 DECLARED COMPATIBLE
   │  platform/shell match confirmed
-  ▼
-CAPABLE
-  │  adapter's requires satisfied by environment capabilities
-  │  if not capable → skip adapter, try next candidate
-  ▼
+  │
+  ▼  [CAPABILITY CHECK]  adapter.requires satisfied by env.capabilities?
+  │                       if NOT satisfied → skip adapter, try next candidate
+  │
 TRUST EVALUATED
   │  trust policy consulted
   │  if not trusted → fall back to generic
@@ -941,7 +947,7 @@ ARTIFACT RESOLVED
   │  if artifact is null → generic (no binding)
   ▼
 TRUSTED
-  │  policy permits, artifact available, capabilities met
+  │  policy permits, artifact available
   ▼
 INSTALLED
      files written to target repository
@@ -1137,19 +1143,20 @@ OBSERVE
   ▼
 DISCOVER
   │  Read catalog, find candidates
-  │  Filter by platform/shell/capability match
+  │  Filter by platform/shell match
   ▼
-CAPABILITY CHECK
+CAPABILITY CHECK (predicate)
   │  For each candidate: are adapter's requires satisfied?
-  │  If not capable → skip, try next candidate
+  │  If NOT satisfied → skip, try next candidate
+  │  This is a FILTER, not a lifecycle state
   ▼
 EVALUATE TRUST
-  │  Check trust policy
+  │  Check trust policy (only for capable candidates)
   │  Is candidate trusted?
   ▼
-NO TRUSTED CAPABLE SPECIALIZED ADAPTER?
+NO TRUSTED SPECIALIZED ADAPTER?
   │  Fall back to generic adapter
-  │  Generic is always trusted, always capable
+  │  Generic is always trusted
   ▼
 RESOLVE ARTIFACT
   │  Read bundled files from package
@@ -1190,7 +1197,7 @@ $ npx pcm init repo-Z
    - Platform: windows
    - Shell: powershell
    - Git: 2.45.0
-   - Capabilities: { "opencode": "1.2.0" } (observation)
+   - Capabilities: { "opencode": "present" } (observation)
 3. Discovering adapters:
    - Catalog match: opencode (platform=windows, shell=powershell)
    - Capability match: opencode requires {"opencode": "*"} → SATISFIED
@@ -1628,13 +1635,10 @@ The architecture is **IMPLEMENTATION-READY**.
 ┌─────────────────────┐
 │ DECLARED COMPATIBLE │  Metadata says env matches
 └────────┬────────────┘
-         │ requires satisfied
-         ▼
-┌─────────────────┐
-│     CAPABLE     │  Required tool/capability present
-└────────┬────────┘
-         │ policy consulted
-         ▼
+         │
+         ▼  [CAPABILITY CHECK]  requires satisfied?
+         │                       if no → skip adapter
+         │
 ┌─────────────────┐
 │ TRUST EVALUATED │  Policy result known
 └────────┬────────┘
@@ -1646,7 +1650,7 @@ The architecture is **IMPLEMENTATION-READY**.
          │ files available
          ▼
 ┌─────────────────┐
-│    TRUSTED      │  Policy permits, artifact ready, capable
+│    TRUSTED      │  Policy permits, artifact ready
 └────────┬────────┘
          │ npx pcm init selects
          ▼
