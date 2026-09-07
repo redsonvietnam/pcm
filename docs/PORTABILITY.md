@@ -1,18 +1,19 @@
 # Portability / Independence Test
 
-**Version:** 0.1.0  
-**Status:** Analysis  
+**Version:** 1.0  
+**Status:** Canonical  
 
 ## Purpose
 
-Explicitly test whether PCM/PWF concepts survive replacement of specific tools, platforms, and technologies. The goal is to identify TRUE CORE, PWF POLICY, and ADAPTER BOUNDARY.
+Explicitly test whether PCM/PWF concepts survive replacement of specific tools, platforms, and technologies.
 
 ## Test Methodology
 
 For each technology, ask:
 1. Does PCM core survive without this technology?
 2. Does PWF mandatory behavior survive without this technology?
-3. What adapter behavior is needed to bind PCM/PWF to this technology?
+3. What must the binding provide?
+4. Which assumptions, if any, are currently hidden?
 
 ## Technology Tests
 
@@ -21,18 +22,22 @@ For each technology, ask:
 **Test:** Do PCM/PWF concepts work without GitHub?
 
 **Analysis:**
-- PCM primitives (WORKSTREAM, TASK, HANDOFF, GATE) do not require GitHub
-- PCM roles (AUTHORITY, PROPOSER, OPERATOR, OBSERVER) do not require GitHub
+- PCM primitives do not require GitHub
 - PCM invariants hold without GitHub
 - PWF mandatory behaviors do not require GitHub
 
-**Adapter needed:** GitHub adapter would provide:
-- Issue/PR as task record format
-- Branch/merge as state management
-- Code review as GATE mechanism
-- Repository as persistent state
+**What Binding Must Provide:**
+- State persistence mechanism
+- Handoff format
+- Gate mechanism
+- Evidence collection
+
+**Hidden Assumptions:**
+- None identified
 
 **Conclusion:** GitHub is an adapter concern, not core.
+
+---
 
 ### Git
 
@@ -43,28 +48,37 @@ For each technology, ask:
 - PCM state model does not require commits
 - PWF mandatory behaviors do not require Git
 
-**Adapter needed:** Git adapter would provide:
-- Commits as state snapshots
-- Branches as parallel state
-- History as audit trail
+**What Binding Must Provide:**
+- State persistence mechanism
+- State snapshot capability
+- History/audit trail
+
+**Hidden Assumptions:**
+- None identified
 
 **Conclusion:** Git is an adapter concern, not core.
 
-### Local Filesystem
+---
+
+### Filesystem
 
 **Test:** Do PCM/PWF concepts work without a filesystem?
 
 **Analysis:**
 - PCM primitives do not require file storage
-- PCM state model requires persistent state, but not files specifically
-- PWF mandatory behaviors require state persistence, but not files
+- PCM state model requires persistent state, but not files
+- PWF mandatory behaviors require state persistence
 
-**Adapter needed:** Filesystem adapter would provide:
-- Files as state storage
-- Directories as organization
-- File formats as serialization
+**What Binding Must Provide:**
+- State persistence mechanism
+- State retrieval mechanism
+
+**Hidden Assumptions:**
+- None identified
 
 **Conclusion:** Filesystem is an adapter concern, not core.
+
+---
 
 ### OpenCode
 
@@ -76,12 +90,17 @@ For each technology, ask:
 - PCM invariants hold without OpenCode
 - PWF mandatory behaviors do not require OpenCode
 
-**Adapter needed:** OpenCode adapter would provide:
-- Skills as behavior definition
-- Tasks as execution units
-- Sessions as context management
+**What Binding Must Provide:**
+- Actor capability model
+- Task execution mechanism
+- State observation mechanism
+
+**Hidden Assumptions:**
+- None identified
 
 **Conclusion:** OpenCode is an adapter concern, not core.
+
+---
 
 ### LLMs
 
@@ -93,14 +112,18 @@ For each technology, ask:
 - PCM invariants hold without AI
 - PWF mandatory behaviors do not require AI
 
-**Adapter needed:** LLM adapter would provide:
-- Model capabilities as actor model
-- Prompt as task specification
-- Response as evidence
+**What Binding Must Provide:**
+- Actor capability model (if using AI)
+- Reasoning capability (if required)
+
+**Hidden Assumptions:**
+- None identified
 
 **Conclusion:** LLMs are an adapter concern, not core.
 
-### Human Operators
+---
+
+### Human-Only Execution
 
 **Test:** Do PCM/PWF concepts work with only human actors?
 
@@ -110,43 +133,59 @@ For each technology, ask:
 - PCM invariants hold with human actors
 - PWF mandatory behaviors work with human actors
 
-**Adapter needed:** Human adapter would provide:
-- Meetings as GATE mechanism
-- Documents as state storage
-- Email as handoff mechanism
+**What Binding Must Provide:**
+- Manual state persistence
+- Manual handoff mechanism
+- Manual Gate mechanism
+
+**Hidden Assumptions:**
+- None identified
 
 **Conclusion:** Human operation is fully supported.
 
-### Programming Languages
+---
 
-**Test:** Do PCM/PWF concepts work without specific programming languages?
+### Code-Based Work
+
+**Test:** Do PCM/PWF concepts work for code-based work?
 
 **Analysis:**
-- PCM primitives do not require code
-- PCM state model does not require code
-- PWF mandatory behaviors do not require code
+- PCM primitives work for code
+- PCM roles work for code
+- PCM invariants hold for code
+- PWF mandatory behaviors work for code
 
-**Adapter needed:** Language adapter would provide:
+**What Binding Must Provide:**
 - Code as implementation
 - Tests as verification
 - Build as execution
 
-**Conclusion:** Programming languages are an adapter concern, not core.
+**Hidden Assumptions:**
+- None identified
 
-### Repositories
+**Conclusion:** Code-based work is fully supported.
 
-**Test:** Do PCM/PWF concepts work without repositories?
+---
+
+### Non-Code Work
+
+**Test:** Do PCM/PWF concepts work for non-code work?
 
 **Analysis:**
-- PCM primitives do not require repositories
-- PCM state model requires persistent state, but not repositories specifically
-- PWF mandatory behaviors require state persistence
+- PCM primitives work for non-code
+- PCM roles work for non-code
+- PCM invariants hold for non-code
+- PWF mandatory behaviors work for non-code
 
-**Adapter needed:** Repository adapter would provide:
-- Repository as state container
-- Collaboration features as coordination
+**What Binding Must Provide:**
+- Domain-specific task formats
+- Domain-specific verification methods
+- Domain-specific persistence
 
-**Conclusion:** Repositories are an adapter concern, not core.
+**Hidden Assumptions:**
+- None identified
+
+**Conclusion:** Non-code work is fully supported.
 
 ## Classification
 
@@ -154,11 +193,10 @@ For each technology, ask:
 - WORKSTREAM, TASK, HANDOFF, GATE primitives
 - AUTHORITY, PROPOSER, OPERATOR, OBSERVER roles
 - Six invariants
-- Concurrent conflict resolution
-- Evidence provenance
 - State distinctions (Canonical, Proposed, Execution, Context)
 - HANDOFF semantics
 - GATE semantics
+- Authority semantics
 
 ### PWF POLICY (recommended but not required)
 - Task lifecycle states
@@ -175,6 +213,13 @@ For each technology, ask:
 - Verification methods
 - Communication channels
 - Persistence mechanisms
+
+## Limitations
+
+1. **Structural assumption** — Test assumes project-based coordination
+2. **No adversarial test** — Did not test domains that resist structure
+3. **No scale test** — Did not test with massive concurrent actors
+4. **Conceptual only** — Did not implement adapters for all technologies
 
 ## Conclusion
 

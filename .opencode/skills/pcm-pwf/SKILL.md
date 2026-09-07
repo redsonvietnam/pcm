@@ -1,79 +1,88 @@
-# PCM/PWF OpenCode Skill — Design Note
+# PCM/PWF OpenCode Skill
 
-**Version:** 0.1.0  
-**Status:** Design Note — Not Ready as Operational Skill  
-**Authority:** Pending External Review  
+**Version:** 1.0  
+**Status:** Canonical Binding  
 
 ## Purpose
 
-This is a design note for a future OpenCode skill that would bind PCM/PWF to OpenCode execution. It is NOT an operational skill. The semantic boundary is still unstable, so this document records design intent rather than implementation.
+Operational binding for OpenCode actors to use PCM/PWF. This skill is NOT PCM. This skill is NOT PWF. It is an operational binding.
 
-## Why This Is a Design Note
-
-The framework semantics are still PROPOSED and may change. Creating an operational skill now would:
-- Prematurely lock the framework into OpenCode-specific patterns
-- Risk diverging from PCM/PWF core as it evolves
-- Create an adapter that may not match the final protocol
-
-This design note records what the skill WOULD do, so that when the framework stabilizes, the skill can be implemented quickly.
-
-## Skill Intent
-
-When the framework stabilizes, this skill would:
+## Instructions
 
 ### 1. Load PCM/PWF
-- Reference canonical PCM/PWF from `docs/PCM.md` and `docs/PWF.md`
-- Not redefine PCM/PWF semantics
-- Treat docs as the source of truth
 
-### 2. Construct a Task
-- Create task records following PWF 4.1
-- Include workstream reference, purpose, authority scope, success criteria, evidence requirements
-- Not assume a specific task format
+Before any work, read:
+- `docs/PCM.md` — Canonical PCM semantics
+- `docs/PWF.md` — Canonical PWF semantics
+- `docs/CONFORMANCE.md` — Conformance criteria
 
-### 3. Observe State
-- Read current canonical state
-- Read proposed state
-- Determine differences
-- Not assume state is in a specific format
+These documents are the source of truth. This skill defers to them.
 
-### 4. Produce Evidence
-- Record evidence with provenance (PCM 12)
-- Distinguish self-reported, independent, and automatic evidence
-- Not assume evidence format
+### 2. Observe Repository/Project State
 
-### 5. Create Handoff
-- Create handoffs following PCM 9 semantics
-- Include canonical state reference, pending proposals, execution context, authority delegation, evidence, next action
-- Not assume handoff format
+Before executing a task:
+- Determine current canonical state
+- Identify pending proposals
+- Check authority status
+- Review evidence
 
-### 6. Stop for Gate
-- Detect when GATE verification is required
+Use repository tools (git, filesystem) to observe state.
+
+### 3. Execute Authorized Task
+
+Only execute tasks that are:
+- Explicitly authorized
+- Within authority scope
+- Not blocked by stop conditions
+
+Follow task lifecycle:
+- PROPOSED → AUTHORIZED → EXECUTING → COMPLETED
+
+### 4. Record Evidence
+
+For each action:
+- Record what was done
+- Record evidence provenance (self-reported, independent, automatic)
+- Store evidence with task record
+
+### 5. Produce Handoff
+
+When work transfers:
+- Create handoff with required semantics
+- Include canonical state reference
+- Include pending proposals
+- Include execution context
+- Include authority delegation (if applicable)
+- Include evidence
+- Include next action recommendation
+
+### 6. Check Canonical State
+
+Before claiming completion:
+- Verify canonical state is current
+- Verify no stale assumptions
+- Verify evidence supports claims
+
+### 7. Stop for Gate
+
+When GATE is required:
 - Stop execution
-- Not proceed without AUTHORITY action
-- Not self-approve
+- Do not proceed without AUTHORITY action
+- Do not self-approve
+- Wait for explicit Gate decision
 
-### 7. Avoid Self-Approval
-- Never mark own work as canonical
-- Never assume AUTHORITY
-- Always require explicit AUTHORITY delegation
+### 8. Refuse Self-Canonicalization
 
-## What the Skill Must NOT Do
+Never:
+- Mark own work as canonical without external AUTHORITY
+- Assume authority from execution capability
+- Treat task completion as approval
+- Bypass Gate verification
 
-- Redefine PCM semantics
-- Redefine PWF semantics
-- Introduce self-approval paths
-- Make OpenCode requirements part of PCM core
-- Assume specific state formats
-- Assume specific task formats
+## Authority
 
-## Implementation Readiness
+This skill is CANONICAL as part of PCM/PWF v0.2 baseline approved by PCM-GATE-01.
 
-**Status:** Not ready for implementation.
+## Implementation Notes
 
-**Reason:** PCM/PWF semantics are still PROPOSED. The skill should be implemented only after:
-1. PCM/PWF is approved by external Authority Gate
-2. Semantic boundary is stable
-3. Adapter model is validated
-
-**Next Step:** When PCM/PWF stabilizes, implement this skill as an adapter, not as a core component.
+This skill provides procedures for OpenCode actors. It does not redefine PCM/PWF semantics. All semantic authority rests with docs/PCM.md, docs/PWF.md, and docs/CONFORMANCE.md.

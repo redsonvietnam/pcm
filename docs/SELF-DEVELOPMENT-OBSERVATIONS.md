@@ -1,6 +1,6 @@
 # Self-Development Observation Record
 
-**Workstream:** PCM-BOOTSTRAP-01  
+**Workstream:** PCM-BOOTSTRAP-01 + PCM-MASTER-01 + PCM-MASTER-02  
 **Date:** 2026-09-07  
 **Status:** Active  
 
@@ -220,7 +220,58 @@ This document records observations from using PCM/PWF to develop itself. The goa
 4. **Numeric coordination limits** — Belongs in policy, not invariants
 5. **Specific routing algorithms** — Belongs in adapter, not core
 
-## 9. Conclusion
+## 9. MASTER-02 Observations
+
+### 9.1 Questions Answered
+
+**Q1: Did the framework reduce ambiguity?**
+**A:** Yes. The canonicalization process clarified semantics. The conformance test groups made behavior observable.
+
+**Q2: Did it increase ceremony?**
+**A:** Minimal. The ceremony (gate records, test groups, validation) provided structure without unnecessary overhead.
+
+**Q3: Which rules were easiest to apply to itself?**
+**A:** Authority separation, state distinctions, handoff semantics.
+
+**Q4: Which rules were hardest?**
+**A:** Task completion vs approval distinction, escalation vs authority transfer.
+
+**Q5: Did the Authority boundary survive?**
+**A:** Yes. External Authority Gate was required and applied.
+
+**Q6: Did canonical vs proposed state remain understandable?**
+**A:** Yes. The distinction remained clear throughout.
+
+**Q7: Did persistence failures expose useful distinctions?**
+**A:** Yes. Local vs remote state distinction was validated.
+
+**Q8: Did the conformance model help implementation?**
+**A:** Yes. Test groups made behavior observable and verifiable.
+
+**Q9: Did any rule feel artificial?**
+**A:** No. All rules served a concrete purpose.
+
+**Q10: Did any new requirement emerge from actual evidence?**
+**A:** Yes. Task completion separation, escalation distinction, and evidence provenance classification emerged from implementation friction.
+
+### 9.2 Friction Classification
+
+**Friction 1: Task Completion Confusion**
+- Classification: Genuine semantic gap
+- Implementation conflated task completion with approval
+- Resolution: Added explicit distinction in PWF 4.2
+
+**Friction 2: Escalation Semantics**
+- Classification: Genuine semantic gap
+- Escalation was too strongly worded
+- Resolution: Clarified escalation ≠ authority transfer
+
+**Friction 3: Evidence Provenance**
+- Classification: Concept at wrong layer
+- Evidence provenance was treated as invariant
+- Resolution: Classified as semantic requirement, not invariant
+
+## 10. Conclusion
 
 The framework-building-itself exercise revealed that:
 1. PCM invariants hold even in self-referential contexts
@@ -233,5 +284,10 @@ The framework-building-itself exercise revealed that:
 8. Single-actor validity was a genuine concern
 9. Drift belongs at the state-relationship layer
 10. Observation belongs as a principle, not a lifecycle
+11. Task completion separation was a genuine gap
+12. Escalation distinction was a genuine gap
+13. Conformance test groups made behavior observable
+14. Cross-domain validation confirmed domain independence
+15. Portability test confirmed tool independence
 
-The framework is PROPOSED and ready for external Authority Gate review.
+The framework is CANONICAL and ready for external implementation validation.

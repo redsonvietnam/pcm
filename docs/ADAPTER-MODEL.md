@@ -1,81 +1,149 @@
-# Adapter Model
+# Adapter Model V1
 
-**Version:** 0.1.0  
-**Status:** Design Candidates  
+**Version:** 1.0  
+**Status:** Canonical  
 
 ## Purpose
 
-Define the conceptual adapter boundary: what information a project/tool/runtime provides so that generic PWF can operate without knowing project internals.
+Define the capability contract for adapters: what semantic capabilities an adapter must provide to bind PCM/PWF to a specific context.
 
-This is NOT an API specification. These are design candidates justified by the conformance work.
+## Capability Contract
 
-## Adapter Responsibilities
+### 1. Canonical-State Observation
 
-An adapter binds PCM/PWF to a specific context. The adapter is responsible for:
+**Required Semantic Capability:**
+- Observe current canonical state
+- Determine what is "actually true"
 
-### 1. State Observation
-**What the adapter provides:**
-- Ability to observe current canonical state
-- Ability to observe proposed state
-- Ability to observe differences between canonical and proposed
+**Optional Implementation Feature:**
+- Specific state format
+- Specific observation mechanism
+- Real-time vs batch observation
 
-**Why:** PCM requires that actors can determine what is actually true (PCM 8.1, PWF 4.5).
+---
 
-### 2. State Persistence
-**What the adapter provides:**
-- Mechanism to store canonical state
-- Mechanism to store proposed state
-- Mechanism to persist across sessions
+### 2. Proposed-State Observation
 
-**Why:** PCM requires that canonical state survives session boundaries (PCM 7.4).
+**Required Semantic Capability:**
+- Observe proposed state
+- Determine what changes are pending
 
-### 3. Task Execution
-**What the adapter provides:**
-- Mechanism to represent tasks
-- Mechanism to execute tasks
-- Mechanism to track task lifecycle
+**Optional Implementation Feature:**
+- Specific proposal format
+- Specific observation mechanism
+- Proposal metadata
 
-**Why:** PWF requires task records and lifecycle (PWF 4.1, 4.2).
+---
 
-### 4. Verification
-**What the adapter provides:**
-- Mechanism to implement GATEs
-- Mechanism to evaluate proposals against criteria
-- Mechanism to record GATE decisions
+### 3. Persistence
 
-**Why:** PCM requires GATE verification for state promotion (PCM 10).
+**Required Semantic Capability:**
+- Store canonical state
+- Store proposed state
+- Persist across sessions
 
-### 5. Evidence Collection
-**What the adapter provides:**
-- Mechanism to record evidence
-- Mechanism to track evidence provenance
-- Mechanism to retrieve evidence for decisions
+**Optional Implementation Feature:**
+- Specific storage technology
+- Specific serialization format
+- Specific persistence mechanism
 
-**Why:** PCM requires evidence provenance to be inspectable (PCM 12).
+---
 
-### 6. Actor Capability Description
-**What the adapter provides:**
-- Description of actor capabilities
-- Description of actor permissions
-- Description of actor resource limits
+### 4. Task Representation
 
-**Why:** PCM requires that authority is explicit and capability-based (PCM 5, 11).
+**Required Semantic Capability:**
+- Represent tasks with required semantics
+- Track task lifecycle
 
-### 7. Handoff Format
-**What the adapter provides:**
-- Format for handoff documents
-- Mechanism to transfer handoffs between actors
-- Mechanism to reconstruct context from handoffs
+**Optional Implementation Feature:**
+- Specific task format
+- Specific lifecycle states
+- Specific task metadata
 
-**Why:** PCM requires handoffs to be reconstructable (PCM 9).
+---
 
-### 8. Communication Channels
-**What the adapter provides:**
-- Mechanism for actors to communicate
-- Mechanism for AUTHORITY to communicate decisions
-- Mechanism for PROPOSER to submit proposals
+### 5. Execution
 
-**Why:** PCM requires explicit communication for authority and proposals.
+**Required Semantic Capability:**
+- Execute tasks
+- Track execution state
+
+**Optional Implementation Feature:**
+- Specific execution mechanism
+- Specific runtime
+- Specific execution environment
+
+---
+
+### 6. Verification
+
+**Required Semantic Capability:**
+- Implement GATE verification
+- Evaluate proposals against criteria
+- Record GATE decisions
+
+**Optional Implementation Feature:**
+- Specific verification method
+- Specific criteria format
+- Specific decision recording
+
+---
+
+### 7. Evidence Retrieval
+
+**Required Semantic Capability:**
+- Record evidence
+- Track evidence provenance
+- Retrieve evidence for decisions
+
+**Optional Implementation Feature:**
+- Specific evidence format
+- Specific provenance tracking
+- Specific retrieval mechanism
+
+---
+
+### 8. Handoff Transfer
+
+**Required Semantic Capability:**
+- Create handoffs with required semantics
+- Transfer handoffs between actors
+- Reconstruct context from handoffs
+
+**Optional Implementation Feature:**
+- Specific handoff format
+- Specific transfer mechanism
+- Specific reconstruction mechanism
+
+---
+
+### 9. Authority Communication/Delegation
+
+**Required Semantic Capability:**
+- Communicate authority decisions
+- Delegate authority through explicit governance
+- Track authority status
+
+**Optional Implementation Feature:**
+- Specific communication format
+- Specific delegation mechanism
+- Specific authority tracking
+
+---
+
+### 10. Actor Capability Description
+
+**Required Semantic Capability:**
+- Describe actor capabilities
+- Describe actor permissions
+- Describe actor resource limits
+
+**Optional Implementation Feature:**
+- Specific capability format
+- Specific permission model
+- Specific resource tracking
+
+---
 
 ## Adapter Boundaries
 
@@ -85,54 +153,15 @@ An adapter binds PCM/PWF to a specific context. The adapter is responsible for:
 - Redefine PCM roles
 - Introduce self-approval paths
 - Make canonical state ambiguous
+- Change core semantics
 
 ### What an Adapter MAY Do
-- Define task record formats
-- Define handoff formats
-- Define GATE mechanisms
-- Define verification methods
-- Define persistence mechanisms
-- Define communication channels
+- Define specific formats for all capabilities
+- Implement specific mechanisms
+- Use specific technologies
 - Add domain-specific behaviors (clearly separated from core)
-
-## Adapter Examples (Conceptual)
-
-### GitHub Adapter
-- State observation: GitHub API, repository state
-- State persistence: Git repository
-- Task execution: Issues, Pull Requests
-- Verification: Code review, CI/CD
-- Evidence: Commit history, review comments
-- Actor capabilities: GitHub permissions
-- Handoff: PR description, review comments
-- Communication: Issues, PRs, comments
-
-### Spreadsheet Adapter
-- State observation: Spreadsheet cells
-- State persistence: Spreadsheet files
-- Task execution: Task rows
-- Verification: Review meetings
-- Evidence: Meeting notes, email records
-- Actor capabilities: Access permissions
-- Handoff: Email with context
-- Communication: Email, meetings
-
-### OpenCode Adapter
-- State observation: File system, task state
-- State persistence: Files, task records
-- Task execution: Skills, tasks
-- Verification: Skill execution, task completion
-- Evidence: Task logs, skill output
-- Actor capabilities: Skill permissions
-- Handoff: Task handoff documents
-- Communication: Task assignments
+- Optimize for specific contexts
 
 ## Implementation Notes
 
-These are design candidates, not mandatory API names. An adapter implementation may:
-- Use different names
-- Combine responsibilities
-- Split responsibilities differently
-- Use any technology
-
-The key requirement is that the adapter provides the capabilities listed above in a way that preserves PCM/PWF semantics.
+Adapters are technology-specific bindings. They must preserve PCM/PWF semantics while providing domain-appropriate implementations. The capability contract defines WHAT an adapter must provide, not HOW to implement it.
