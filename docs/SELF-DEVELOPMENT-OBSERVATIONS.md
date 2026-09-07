@@ -144,7 +144,83 @@ This document records observations from using PCM/PWF to develop itself. The goa
 - Use friction points as improvement signals
 - Preserve flexibility for adaptation
 
-## 8. Conclusion
+## 8. Master Workstream Observations (PCM-MASTER-01)
+
+### 8.1 Questions Answered
+
+**Q1: Did PCM help structure its own construction?**
+**A:** Yes. The invariants provided clear decision boundaries. When tempted to add features, the "What failure does this prevent?" question was effective at filtering.
+
+**Q2: Did PWF reduce ambiguity?**
+**A:** Partially. PWF mandatory behaviors provided structure, but the boundary between mandatory and recommended was initially unclear. Hardening clarified this.
+
+**Q3: Did the framework create unnecessary ceremony?**
+**A:** Minimal. The evidence requirements added overhead but ensured reconstructability. The key insight is that ceremony is only unnecessary when it doesn't prevent a concrete failure.
+
+**Q4: Did any rule become difficult when applied to itself?**
+**A:** Yes. The "Agent ≠ Authority" invariant created a genuine constraint: the implementation cannot approve itself. This is correct behavior but creates a bootstrap challenge.
+
+**Q5: Were state transitions reconstructable?**
+**A:** Yes. The handoff structure made context transfer explicit. The closeout handoff contained enough information for continuation.
+
+**Q6: Did the separation between proposer and authority hold?**
+**A:** Yes. All work was marked as PROPOSED. No self-approval was attempted. External authority was clearly identified as required.
+
+**Q7: Did the local/remote persistence failure expose a useful semantic distinction?**
+**A:** Yes. The inability to push to GitHub demonstrated that local state and remote state are different concerns. The protocol functions regardless of persistence mechanism.
+
+**Q8: What should NOT be added to the framework?**
+**A:** 
+- Domain-specific primitives
+- Tool-specific behaviors
+- Numeric coordination limits
+- Specific observation lifecycles
+- Specific routing algorithms
+
+### 8.2 Friction Classification
+
+**Friction 1: Circular Reference Challenge**
+- Classification: Genuine semantic gap
+- The bootstrap problem (who authorizes the authorizer?) is a real challenge
+- Resolution: External Authority Gate is the only resolution
+
+**Friction 2: Concurrent Proposal Conflict**
+- Classification: Genuine semantic gap
+- The original design did not address conflicting proposals
+- Resolution: Added invariant 7.6 (Concurrent Conflict ≠ Silent Resolution)
+
+**Friction 3: Execution Actor Model**
+- Classification: Over-engineering
+- The original model had too many dimensions
+- Resolution: Simplified to 5 dimensions with clear ACTOR-MEMORY vs STATE-ACCESS distinction
+
+**Friction 4: Observation Lifecycle**
+- Classification: Unnecessary ceremony
+- The specific 5-stage lifecycle was too prescriptive
+- Resolution: Reduced to a principle (observation precedes action) in PWF recommended behavior
+
+**Friction 5: Drift as Separate Concept**
+- Classification: Concept at wrong layer
+- Drift was treated as a standalone concept rather than a property of state relationship
+- Resolution: Moved drift to be a property of Proposed/Canonical state relationship
+
+### 8.3 Framework Improvements Made
+
+1. **Concurrent Conflict Invariant** (PCM 7.6) — Addresses a real gap
+2. **Evidence Provenance** (PCM 12) — Enables informed evidence evaluation
+3. **Single-Actor Validity** (PWF 11) — Ensures protocol works with one actor
+4. **Drift as State Relationship** (PWF 8) — Correct layer assignment
+5. **Observation as Principle** (PWF 6.3) — Reduces unnecessary ceremony
+
+### 8.4 What Was NOT Added (And Why)
+
+1. **DRIFT as 5th primitive** — Drift is a property, not a primitive
+2. **EVIDENCE as primitive** — Evidence is an attribute of state transitions
+3. **Specific observation lifecycle** — Too prescriptive for protocol layer
+4. **Numeric coordination limits** — Belongs in policy, not invariants
+5. **Specific routing algorithms** — Belongs in adapter, not core
+
+## 9. Conclusion
 
 The framework-building-itself exercise revealed that:
 1. PCM invariants hold even in self-referential contexts
@@ -152,5 +228,10 @@ The framework-building-itself exercise revealed that:
 3. Conformance criteria are observable and testable
 4. The main friction is in bootstrap/authority questions
 5. The framework is small enough to remain coherent
+6. Concurrent proposal conflict was a genuine gap
+7. Evidence provenance was a genuine gap
+8. Single-actor validity was a genuine concern
+9. Drift belongs at the state-relationship layer
+10. Observation belongs as a principle, not a lifecycle
 
 The framework is PROPOSED and ready for external Authority Gate review.

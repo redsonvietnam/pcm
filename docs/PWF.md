@@ -1,23 +1,22 @@
 # Protocol Workflow Framework (PWF)
 
-**Version:** 0.1.0 (Proposed)  
-**Status:** Draft  
+**Version:** 0.2.0 (Proposed)  
+**Status:** Draft — Hardened  
 **Authority:** Pending External Review  
 
 ## 1. Purpose
 
-PWF defines how PCM-governed work is normally executed. It provides the execution framework that sits above PCM, translating protocol invariants into operational methods.
+PWF defines how PCM-governed work is normally executed. It provides the execution framework above PCM, translating protocol invariants into operational patterns.
 
-PWF is project-agnostic, tool-agnostic, and model-agnostic at its core. It defines behavior patterns, not specific implementations.
+PWF is project-agnostic, tool-agnostic, and model-agnostic. It defines behavior patterns, not specific implementations. PWF is valid with a single actor or many actors.
 
 ## 2. Scope
 
-PWF applies to executing work within PCM governance. It covers:
-- Task lifecycle management
-- Execution flow control
-- State transitions
-- Verification processes
-- Recovery mechanisms
+PWF governs:
+- Task representation and lifecycle
+- Execution patterns for PCM-governed work
+- Verification and handoff mechanics
+- Recovery from interruptions
 
 ## 3. Non-Scope
 
@@ -27,53 +26,64 @@ PWF does not define:
 - Runtime implementations
 - Environment bindings
 - Domain-specific procedures
+- How routing is performed
+- How observations are structured
 
 ## 4. Mandatory Behavior
 
-The following behaviors are mandatory for PWF conformance:
+The following behaviors are mandatory for PWF conformance.
 
-### 4.1 Task Packet Structure
+### 4.1 Task Record
 
-Every task must be representable as a Task Packet containing:
+Every task must be representable as a record containing:
 - Workstream reference
 - Task purpose
-- Authority delegation
+- Authority delegation scope
 - Success criteria
-- Context requirements
 - Evidence requirements
+
+The task record is the minimal unit of work tracking. Its format is implementation-specific.
 
 ### 4.2 Task Lifecycle
 
-Tasks follow a mandatory lifecycle:
-1. **PROPOSED** - Task suggested, pending authority
-2. **AUTHORIZED** - Task approved by authority
-3. **EXECUTING** - Task actively being worked
-4. **VERIFYING** - Task completion being verified
-5. **COMPLETED** - Task verified and closed
-6. **REJECTED** - Task rejected (with rationale)
+Tasks follow a lifecycle with at minimum these states:
+1. **PROPOSED** — Task suggested, pending authority
+2. **AUTHORIZED** — Task approved by authority
+3. **EXECUTING** — Task actively being worked
+4. **COMPLETED** — Task verified and closed
+5. **REJECTED** — Task rejected (with rationale)
 
-### 4.3 Handoff Contract
+Additional states (e.g., BLOCKED, SUSPENDED) are permitted but not required.
 
-Handoffs must include:
-- Current canonical state reference
-- Pending proposals (if any)
-- Execution context
-- Authority delegation (if applicable)
-- Evidence of progress
-- Next action recommendation
+Transitions between states must be explicit. State cannot change without a defined trigger.
 
-### 4.4 GATE Integration
+### 4.3 Handoff
 
-PWF must support GATE verification at appropriate points. GATEs prevent:
-- Self-approval of work
-- Unverified changes becoming canonical
-- Silent drift from intended state
+When work transfers between actors, the handoff must satisfy PCM HANDOFF semantics (PCM section 9). The handoff is the mechanism that makes work reconstructable.
 
-## 5. Recommended Behavior
+PWF does not redefine HANDOFF. PWF requires that handoffs conform to PCM HANDOFF semantics.
 
-The following behaviors are recommended but not mandatory:
+### 4.4 GATE Support
 
-### 5.1 Checkpoints
+PWF must support GATE verification at appropriate points. The GATE is the only mechanism by which proposed state becomes canonical (PCM section 10).
+
+PWF does not redefine GATE. PWF requires that GATEs conform to PCM GATE semantics.
+
+### 4.5 State Traceability
+
+At any point, an actor must be able to determine:
+- What is the current canonical state
+- What proposals exist
+- What authority has been delegated
+- What evidence exists for claimed progress
+
+This does not require a specific implementation. It requires that the information be retrievable.
+
+## 6. Recommended Behavior
+
+The following behaviors are recommended but not mandatory.
+
+### 6.1 Checkpoints
 
 Regular checkpoints help maintain continuity:
 - Progress against success criteria
@@ -81,16 +91,7 @@ Regular checkpoints help maintain continuity:
 - Context freshness
 - Evidence completeness
 
-### 5.2 Observation Lifecycle
-
-Observations should follow:
-1. **OBSERVED** - Something noticed
-2. **RECORDED** - Observation documented
-3. **EVALUATED** - Relevance assessed
-4. **ACTIONED** - Response taken (if warranted)
-5. **ARCHIVED** - Observation preserved for reference
-
-### 5.3 Next Action Determination
+### 6.2 Next Action Determination
 
 When determining next action:
 - Consider current canonical state
@@ -99,19 +100,34 @@ When determining next action:
 - Evaluate authority boundaries
 - Check for blockers or dependencies
 
-## 6. Optional Behavior
+### 6.3 Observation Principle
 
-The following behaviors are implementation-specific:
+Repeated or evidenced observation should precede protocol-changing action, with AUTHORITY where required.
 
-### 6.1 Routing/Rerouting
+This is a principle, not a lifecycle. Implementations may structure observations as they see fit, provided the principle is honored.
 
-How execution actors are selected or reassigned based on:
-- Capability requirements
-- Availability
-- Workload
-- Specialization
+### 6.4 Evidence Collection
 
-### 6.2 Verification Selection
+Evidence should be collected in a way that:
+- Supports the decision at hand
+- Has inspectable provenance (PCM section 12)
+- Is proportionate to the significance of the decision
+
+## 7. Optional / Pluggable Behavior
+
+The following behaviors are implementation-specific. PWF does not mandate how these are performed.
+
+### 7.1 Routing
+
+How execution actors are selected or reassigned. PWF is valid when:
+- One actor is available
+- Routing is static
+- Routing is manually selected
+- Routing is dynamic
+
+Routing decisions should be traceable where meaningful.
+
+### 7.2 Verification Selection
 
 How verification methods are chosen:
 - Automated checks
@@ -119,27 +135,21 @@ How verification methods are chosen:
 - Peer verification
 - Authority approval
 
-### 6.3 Recovery Mechanisms
+### 7.3 Recovery
 
 How work recovers from interruptions:
-- State reconstruction
-- Context restoration
+- State reconstruction from persistent state
+- Context restoration from handoffs
 - Authority re-establishment
 - Progress revalidation
 
-## 7. Workstream Execution Loop
+### 7.4 Observation Structure
 
-The core execution loop:
+How observations are recorded and lifecycle-managed. The observation principle (6.3) is recommended; the specific structure is optional.
 
-1. **Receive** - Task Packet arrives
-2. **Validate** - Ensure authority and context
-3. **Execute** - Perform task actions
-4. **Document** - Record evidence and progress
-5. **Verify** - Check completion criteria
-6. **Handoff** - Transfer context if needed
-7. **Close** - Mark task complete or escalate
+## 8. State Relationship: Drift and Reconciliation
 
-## 8. Drift Detection and Reconciliation
+Drift is not a separate concept. It is a property of the relationship between proposed state and canonical state.
 
 ### 8.1 Drift Indicators
 - Proposed state diverging from canonical
@@ -147,12 +157,14 @@ The core execution loop:
 - Authority assumptions without delegation
 - Evidence gaps in progress
 
-### 8.2 Reconciliation Process
-1. Detect drift through monitoring
-2. Assess drift significance
-3. Determine reconciliation approach
-4. Execute reconciliation
-5. Verify alignment restored
+### 8.2 Reconciliation
+When drift is detected:
+1. Assess drift significance
+2. Determine reconciliation approach
+3. Execute reconciliation
+4. Verify alignment restored
+
+Drift detection and reconciliation mechanisms are adapter-specific. The semantic requirement is that stale claims can be invalidated by actual state.
 
 ## 9. Stop Conditions
 
@@ -171,18 +183,17 @@ Escalation occurs when:
 - Conflict between invariants
 - Recovery mechanism insufficient
 
-Escalation transfers authority or decision-making to higher-level authority.
+Escalation transfers authority or decision-making to a higher-level authority scope.
 
-## 11. Project Independence
+## 11. Single-Actor Validity
 
-PWF remains valid across:
-- Software engineering
-- Data/ML pipelines
-- Media production
-- Automation/tooling
-- Non-code work
+PWF functions with a single actor. When only one actor exists:
+- That actor may hold multiple roles (PROPOSER + OPERATOR)
+- AUTHORITY must still be explicit (even if self-delegated through a defined mechanism)
+- GATE semantics still apply (even if the same actor proposes and approves, the actions must be distinct and traceable)
+- Handoffs may be to self (for session reconstruction)
 
-The framework adapts through adapters, not core changes.
+The protocol does not require multiple actors to be meaningful.
 
 ## 12. Versioning
 

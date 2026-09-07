@@ -1,165 +1,145 @@
 # PCM/PWF Conformance Specification
 
-**Version:** 0.1.0 (Proposed)  
-**Status:** Draft  
+**Version:** 0.2.0 (Proposed)  
+**Status:** Draft — Hardened  
 **Authority:** Pending External Review  
 
 ## 1. Purpose
 
 This document defines how implementations or adapters demonstrate conformance to PCM and PWF. Conformance is based on observable behavior, not internal claims.
 
-## 2. Scope
+## 2. Conformance Levels
 
-Conformance applies to:
-- Software tools implementing PCM/PWF
-- Adapters binding PCM/PWF to specific environments
-- Workflows following PCM/PWF principles
-- Documentation describing PCM/PWF usage
+### 2.1 PCM-Core-Conformant
+Demonstrates adherence to all PCM invariants and primitives. This is the minimum conformance level.
 
-## 3. Conformance Levels
+### 2.2 PWF-Conformant
+Demonstrates adherence to PCM-Core plus PWF mandatory behaviors.
 
-### 3.1 PCM Core Conformance
-Demonstrates adherence to PCM invariants and primitives.
+### 2.3 Adapter-Conformant
+Demonstrates adherence to PWF-Conformant plus adapter-specific behaviors for a particular domain or tool.
 
-### 3.2 PWF Mandatory Conformance
-Demonstrates adherence to PWF mandatory behaviors.
+## 3. PCM-Core Conformance Criteria
 
-### 3.3 PWF Extended Conformance
-Demonstrates adherence to PWF recommended behaviors.
+For each criterion, the test describes what must be observable. The counterexample describes behavior that would violate conformance.
 
-## 4. Observable Conformance Criteria
+### 3.1 Authority Integrity
 
-### 4.1 Authority Integrity
+**Test:** An actor that executes work does not simultaneously hold AUTHORITY over that work's canonical outcome without explicit delegation.
 
-**Criterion:** Implementation cannot self-approve.
+**Counterexample:** If an implementation allows an operator to mark their own work as canonical without a separate AUTHORITY action, it does not conform.
 
-**Observable Test:**
-- Implementation never marks its own work as canonical without external AUTHORITY approval
-- Implementation provides mechanism for AUTHORITY delegation
-- Implementation distinguishes between PROPOSER and AUTHORITY roles
+### 3.2 Implementation-Approval Separation
 
-**Evidence Required:**
-- Authorization logs showing external approval
-- Role separation in access controls
-- Self-approval prevention mechanisms
+**Test:** Completing a task does not automatically approve its outcome. AUTHORITY approval is a distinct action from task completion.
 
-### 4.2 State Management
+**Counterexample:** If task completion automatically triggers canonical state promotion, it does not conform.
 
-**Criterion:** Proposed state requires GATE before becoming canonical.
+### 3.3 Proposed-Canonical Separation
 
-**Observable Test:**
-- Proposed changes are held in provisional state
-- GATE verification occurs before canonical promotion
-- Rejected proposals are documented with rationale
+**Test:** Proposed changes are held in provisional state and require GATE approval before becoming canonical.
 
-**Evidence Required:**
-- State transition logs
-- GATE decision records
-- Proposal rejection documentation
+**Counterexample:** If a proposal becomes canonical without explicit AUTHORITY action through a GATE, it does not conform.
 
-### 4.3 Context Reconstruction
+### 3.4 Concurrent Conflict Resolution
 
-**Criterion:** Handoff supports context reconstruction.
+**Test:** When conflicting proposals exist for the same canonical state, neither becomes canonical by virtue of being first, last, or implemented. AUTHORITY must explicitly resolve the conflict.
 
-**Observable Test:**
-- Another actor can continue work from HANDOFF alone
-- HANDOFF includes all necessary context elements
-- Context is reconstructable without memory of previous sessions
+**Counterexample:** If the implementation silently resolves conflicting proposals by picking one (e.g., "last write wins"), it does not conform.
 
-**Evidence Required:**
-- HANDOFF completeness checks
-- Work continuation from HANDOFFs
-- Context reconstruction tests
+### 3.5 Context-Canonical Separation
 
-### 4.4 Stale State Detection
+**Test:** Session context, memory, or working state cannot override canonical state. Canonical state is the source of truth.
 
-**Criterion:** Stale claims can be invalidated by actual state.
+**Counterexample:** If an implementation treats session memory as authoritative when it conflicts with persistent state, it does not conform.
 
-**Observable Test:**
-- Implementation detects when context diverges from canonical
-- Stale assumptions are flagged
-- Reconciliation mechanisms exist
+### 3.6 Stale State Detection
 
-**Evidence Required:**
-- Drift detection logs
-- Stale claim invalidation records
-- Reconciliation process documentation
+**Test:** When an actor's context diverges from canonical state, the divergence is detectable. Stale claims can be invalidated by actual state.
 
-### 4.5 Observation Independence
+**Counterexample:** If an implementation allows an actor to proceed with stale assumptions that contradict canonical state without any detection mechanism, it does not conform.
 
-**Criterion:** Observations do not automatically become authorized work.
+### 3.7 Authority Explicitness
 
-**Observable Test:**
-- Observations are recorded separately from authorization
-- Observations require evaluation before action
-- Authorization is explicit, not implicit
+**Test:** Authority is explicit, resolvable, and non-ambiguous for the decision/scope being governed. At any point, it is possible to determine who has AUTHORITY for a given scope.
 
-**Evidence Required:**
-- Observation lifecycle logs
-- Authorization decision records
-- Separation of observation and action
+**Counterexample:** If authority is implicitly assumed from role, capability, or proximity to work, it does not conform.
 
-### 4.6 Capability Routing
+### 3.8 Protocol Independence
 
-**Criterion:** Routing can change when capability requirements change.
+**Test:** Core semantics do not require a specific tool, model, repository, or platform. The protocol functions across different implementations.
 
-**Observable Test:**
-- Routing decisions consider capability requirements
-- Capability mismatches trigger re-routing
-- Routing changes are documented
+**Counterexample:** If core semantics break when a specific tool is removed, it does not conform.
 
-**Evidence Required:**
-- Routing decision logs
-- Capability requirement documentation
-- Re-routing records
+### 3.9 Evidence Provenance
 
-### 4.7 Tool Independence
+**Test:** Evidence provenance is inspectable. It is possible to determine whether evidence is self-reported, independently produced, or automatically observed.
 
-**Criterion:** Core semantics do not depend on a specific tool/model/repo.
+**Counterexample:** If all evidence is treated identically regardless of provenance, or if provenance is not inspectable, it does not conform.
 
-**Observable Test:**
-- Implementation works across different tools
-- Core semantics remain valid without specific dependencies
-- Tool changes do not alter protocol behavior
+### 3.10 Handoff Reconstruction
 
-**Evidence Required:**
-- Cross-tool testing results
-- Dependency analysis
-- Protocol behavior consistency
+**Test:** A HANDOFF contains enough information for a different actor to continue work. Context is reconstructable from the HANDOFF alone.
 
-### 4.8 Adapter Isolation
+**Counterexample:** If a HANDOFF requires memory of previous sessions to be useful, it does not conform.
 
-**Criterion:** Adapter-specific behavior stays outside core semantics.
+## 4. PWF Conformance Criteria
 
-**Observable Test:**
-- Core semantics are separable from adapter behavior
-- Adapter changes do not affect core invariants
-- Adapter-specific features are clearly marked
+PWF-Conformant implementations must also satisfy:
 
-**Evidence Required:**
-- Core/adapter separation analysis
-- Adapter behavior documentation
-- Core invariant preservation tests
+### 4.1 Task Record
 
-## 5. Conformance Assessment Process
+**Test:** Every task is representable as a record containing workstream reference, task purpose, authority delegation scope, success criteria, and evidence requirements.
 
-### 5.1 Evidence Collection
-- Gather observable behavior evidence
-- Document test results
-- Record implementation specifics
+**Counterexample:** If tasks cannot be represented in a structured form, it does not conform.
 
-### 5.2 Criteria Evaluation
-- Assess each conformance criterion
-- Identify gaps or failures
-- Document exceptions
+### 4.2 Task Lifecycle
 
-### 5.3 Conformance Statement
-- Declare conformance level
-- List applicable criteria
-- Note any exceptions or limitations
+**Test:** Tasks follow a lifecycle with at minimum PROPOSED, AUTHORIZED, EXECUTING, COMPLETED, and REJECTED states. State transitions are explicit.
 
-## 6. Conformance Limitations
+**Counterexample:** If tasks have no defined lifecycle or state transitions are implicit, it does not conform.
 
+### 4.3 GATE Support
+
+**Test:** GATE verification is supported at appropriate points. The GATE is the only mechanism for proposed-to-canonical promotion.
+
+**Counterexample:** If proposed state can become canonical without GATE verification, it does not conform.
+
+### 4.4 State Traceability
+
+**Test:** At any point, an actor can determine current canonical state, pending proposals, delegated authority, and evidence of progress.
+
+**Counterexample:** If this information is not retrievable, it does not conform.
+
+## 5. Adapter Conformance Criteria
+
+Adapter-Conformant implementations must also satisfy:
+
+### 5.1 Domain Appropriateness
+
+**Test:** The adapter's behaviors are appropriate for its domain. Domain-specific rules are clearly separated from core semantics.
+
+**Counterexample:** If domain-specific rules are embedded in PCM or PWF core, it does not conform.
+
+### 5.2 Core Preservation
+
+**Test:** Adapter-specific behaviors do not violate PCM invariants or PWF mandatory behaviors.
+
+**Counterexample:** If an adapter introduces behavior that violates a PCM invariant, it does not conform.
+
+## 6. Conformance Assessment
+
+### 6.1 Evidence Requirements
+- Observable behavior supporting each criterion
+- Test results documenting pass/fail
+- Exceptions or limitations noted
+
+### 6.2 Conformance Statement
+- Declares conformance level (PCM-Core, PWF, or Adapter)
+- Lists criteria evaluated
+- Notes exceptions or limitations
+
+### 6.3 Limitations
 Conformance does not guarantee:
 - Correctness of implementation
 - Suitability for specific purposes
