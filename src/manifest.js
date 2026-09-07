@@ -15,7 +15,7 @@ function createManifest({ pcmVersion, distributionVersion, adapter, binding, man
       id: adapter.id,
       origin: 'built-in',
       artifactPath: adapter.artifact,
-      version: adapter.name,
+      version: distributionVersion,
     },
     core: {
       pcm: 'pcm/docs/PCM.md',

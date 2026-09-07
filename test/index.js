@@ -227,9 +227,67 @@ console.log('Manifest: schema');
   assert(typeof m.initializedAt === 'string', 'initializedAt is string');
   assert(m.adapter.id === 'generic', 'adapter.id set');
   assert(m.adapter.origin === 'built-in', 'adapter.origin is built-in');
+  assert(m.adapter.version === '1.0.0', 'adapter.version is distribution version, not adapter.name');
   assert(m.state === 'bootstrapped', 'state is bootstrapped');
   assert(Array.isArray(m.binding), 'binding is array');
   assert(Array.isArray(m.managedFiles), 'managedFiles is array');
+}
+
+// ================================================================
+// MANIFEST: adapter.version is real version, not adapter.name
+// ================================================================
+console.log('Manifest: adapter.version is real version');
+{
+  const m1 = createManifest({
+    pcmVersion: '1.0',
+    distributionVersion: '1.0.0',
+    adapter: { id: 'opencode', artifact: 'adapters/opencode', name: 'OpenCode Adapter' },
+    binding: [],
+    managedFiles: [],
+  });
+  assert(m1.adapter.version === '1.0.0',
+    `adapter.version = "${m1.adapter.version}" (expected "1.0.0", not adapter.name)`);
+  assert(m1.adapter.version !== 'OpenCode Adapter', 'adapter.version is not adapter.name');
+
+  const m2 = createManifest({
+    pcmVersion: '1.0',
+    distributionVersion: '2.0.0-beta',
+    adapter: { id: 'generic', artifact: null, name: 'Generic Adapter' },
+    binding: [],
+    managedFiles: [],
+  });
+  assert(m2.adapter.version === '2.0.0-beta',
+    `adapter.version tracks distribution version across different values`);
+}
+
+// ================================================================
+// MANIFEST: initializedAt tampering is excluded from manual-modification detection
+// ================================================================
+console.log('Manifest: initializedAt tamper excluded from detection');
+{
+  const d = tmpDir();
+  execute(d, pkgRoot);
+  const m1 = getManifest(d);
+  const originalAdapterId = m1.adapter.id;
+
+  // Tamper: change only initializedAt (provenance field, not generated content)
+  m1.initializedAt = '2020-01-01T00:00:00.000Z';
+  writeManifest(d, m1);
+
+  // Re-init: manifestsMatch excludes initializedAt, so if adapter/version/state
+  // all still match, the result depends on adapter/version/state comparison.
+  // Since we only changed initializedAt (not adapter.id, not distributionVersion,
+  // not state), the manifestsMatch should still return true if it excluded initializedAt.
+  // But manifestsMatch DOESN'T check initializedAt, so it compares the rest.
+  // The rest still matches -> manifestsMatch returns true -> status = 'current'
+  // -> manifest is NOT overwritten -> initializedAt stays tampered.
+  const r = execute(d, pkgRoot);
+  assert(r.exitCode === 0, 'initializedAt tamper does not cause error');
+  const m2 = getManifest(d);
+  assert(m2.initializedAt === '2020-01-01T00:00:00.000Z',
+    'initializedAt tamper is not detected — preserved as-is (provenance field excluded from comparison)');
+  assert(m2.adapter.id === originalAdapterId, 'adapter unchanged');
+  cleanup(d);
 }
 
 // ================================================================
