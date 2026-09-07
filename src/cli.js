@@ -6,9 +6,9 @@ const { detect } = require('./detect');
 const { loadCatalog } = require('./catalog');
 const { select } = require('./select');
 const { resolveArtifact } = require('./resolve');
-const { createManifest, readManifest, writeManifest, manifestsMatch } = require('./manifest');
+const { createManifest, readManifest, writeManifest } = require('./manifest');
 const { installCoreFiles, installBindingFiles, getCoreTargetPaths } = require('./install');
-const { checkIdempotency, preserveInitializedAt, fileContentMatches } = require('./idempotency');
+const { checkIdempotency, preserveInitializedAt } = require('./idempotency');
 
 const PCM_VERSION = '1.0';
 const DISTRIBUTION_VERSION = '1.0.0';
@@ -113,19 +113,8 @@ function execute(targetDir, packageRoot) {
     managedFiles: [],
   });
 
-  const idempotency = checkIdempotency(targetDir, newManifest);
-
-  if (!idempotency.isFirstInit && idempotency.existingManifest) {
-    if (idempotency.existingManifest.adapter && idempotency.existingManifest.adapter.id !== selectedAdapter.id) {
-      return {
-        exitCode: 1,
-        error: `Existing installation uses adapter "${idempotency.existingManifest.adapter.id}", selected adapter is "${selectedAdapter.id}"`,
-        recovery: 'Remove the existing pcm/ directory and re-run npx pcm init',
-      };
-    }
-  }
-
   const existingManifest = readManifest(targetDir);
+  const idempotency = checkIdempotency(existingManifest, newManifest, targetDir);
   preserveInitializedAt(existingManifest, newManifest);
 
   let totalFilesWritten = 0;
@@ -133,9 +122,19 @@ function execute(targetDir, packageRoot) {
   try {
     const coreResult = installCoreFiles(targetDir, packageRoot);
     totalFilesWritten += coreResult.filesWritten;
+    for (const msg of coreResult.messages) {
+      if (msg.type === 'overwrite') {
+        console.error(`Overwrote locally modified core file: ${msg.path}`);
+      }
+    }
 
     const bindingResult = installBindingFiles(targetDir, bindingRecords);
     totalFilesWritten += bindingResult.filesWritten;
+    for (const msg of bindingResult.messages) {
+      if (msg.type === 'preserve') {
+        console.error(`Preserved locally modified binding: ${msg.path}`);
+      }
+    }
   } catch (err) {
     return { exitCode: 1, error: err.message, recovery: 'Check file permissions and re-run npx pcm init' };
   }
@@ -146,13 +145,16 @@ function execute(targetDir, packageRoot) {
   ];
   newManifest.managedFiles = allManagedFiles;
 
-  if (!existingManifest || !manifestsMatch(existingManifest, newManifest)) {
+  if (idempotency.status === 'manually-modified') {
+    console.error(`Manifest was manually modified. Current state: ${JSON.stringify(newManifest, null, 2)}. Existing: ${JSON.stringify(existingManifest, null, 2)}. Manifest not overwritten. To regenerate, delete the manifest and re-run npx pcm init.`);
+  } else if (!existingManifest || idempotency.status === 'stale') {
     try {
       writeManifest(targetDir, newManifest);
     } catch (err) {
       return { exitCode: 1, error: `Failed to write manifest: ${err.message}`, recovery: 'Check directory permissions' };
     }
   }
+  // else status === 'current' → no rewrite needed
 
   const lines = [
     'PCM initialized successfully.',

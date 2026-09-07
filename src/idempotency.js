@@ -32,19 +32,37 @@ function fileContentMatches(filePath, expectedContent) {
   return actual.toString('utf8') === expectedContent;
 }
 
-function checkIdempotency(targetDir, newManifest) {
-  const existing = readManifest(targetDir);
-  if (!existing) {
-    return { isFirstInit: true, isStale: false, isManuallyModified: false };
+function checkIdempotency(existingManifest, newManifest, targetDir) {
+  if (!existingManifest) {
+    return { status: 'first-init' };
   }
 
-  const matched = manifestsMatch(existing, newManifest);
-  return {
-    isFirstInit: false,
-    isStale: !matched,
-    isManuallyModified: !matched && existing.initializedAt !== undefined,
-    existingManifest: existing,
-  };
+  if (manifestsMatch(existingManifest, newManifest)) {
+    return { status: 'current', existingManifest };
+  }
+
+  const adapterChanged = existingManifest.adapter &&
+    existingManifest.adapter.id !== newManifest.adapter.id;
+  const versionChanged = existingManifest.distributionVersion !== newManifest.distributionVersion;
+  const stateIncomplete = existingManifest.state !== 'bootstrapped';
+
+  if (adapterChanged || versionChanged || stateIncomplete) {
+    return { status: 'stale', existingManifest };
+  }
+
+  if (existingManifest.managedFiles && existingManifest.managedFiles.length > 0) {
+    const managedDir = targetDir ? path.join(targetDir) : null;
+    for (const managedFile of existingManifest.managedFiles) {
+      if (managedDir) {
+        const fullPath = path.join(managedDir, managedFile);
+        if (!fs.existsSync(fullPath)) {
+          return { status: 'stale', existingManifest };
+        }
+      }
+    }
+  }
+
+  return { status: 'manually-modified', existingManifest };
 }
 
 function preserveInitializedAt(existingManifest, newManifest) {

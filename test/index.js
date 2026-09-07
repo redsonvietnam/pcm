@@ -8,8 +8,8 @@ const { execute, parseArgs, getPackageRoot } = require('../src/cli');
 const { detect } = require('../src/detect');
 const { loadCatalog } = require('../src/catalog');
 const { select, capabilitiesSatisfied, isTrusted } = require('../src/select');
-const { resolveArtifact } = require('../src/resolve');
 const { createManifest, readManifest, writeManifest, manifestsMatch } = require('../src/manifest');
+const { checkIdempotency } = require('../src/idempotency');
 
 let passed = 0;
 let failed = 0;
@@ -37,12 +37,13 @@ function getManifest(targetDir) {
 
 const pkgRoot = getPackageRoot();
 
-// === A: Empty/unknown repo, no tools -> generic ===
+// ================================================================
+// A: Empty/unknown repo, no tools -> generic
+// ================================================================
 console.log('A: Empty repo -> generic adapter');
 {
   const d = tmpDir();
   const origEnv = { ...process.env };
-  // Clear tool paths to simulate no tools
   delete process.env.PATH;
   process.env.PATH = '/usr/bin:/bin';
   const env = detect();
@@ -53,13 +54,14 @@ console.log('A: Empty repo -> generic adapter');
   cleanup(d);
 }
 
-// === B: Unknown repo, OpenCode present -> opencode ===
+// ================================================================
+// B: OpenCode present -> opencode adapter
+// ================================================================
 console.log('B: OpenCode present -> opencode adapter');
 {
   const env = detect();
   const cat = loadCatalog(pkgRoot);
   const adapter = select(cat, env);
-  // On this machine opencode may or may not be present
   if (env.capabilities.opencode) {
     assert(adapter.id === 'opencode', 'should select opencode');
   } else {
@@ -67,7 +69,9 @@ console.log('B: OpenCode present -> opencode adapter');
   }
 }
 
-// === E: Repeat init idempotent ===
+// ================================================================
+// E: Repeat init idempotent
+// ================================================================
 console.log('E: Repeat init idempotent');
 {
   const d = tmpDir();
@@ -82,21 +86,42 @@ console.log('E: Repeat init idempotent');
   cleanup(d);
 }
 
-// === G: Modified core -> overwrite ===
+// ================================================================
+// G: Modified core -> overwrite
+// ================================================================
 console.log('G: Modified core -> overwrite');
 {
   const d = tmpDir();
   execute(d, pkgRoot);
   const pcmPath = path.join(d, 'pcm', 'docs', 'PCM.md');
   fs.writeFileSync(pcmPath, 'MODIFIED');
-  execute(d, pkgRoot);
+  const r = execute(d, pkgRoot);
   const after = fs.readFileSync(pcmPath, 'utf8');
   assert(after !== 'MODIFIED', 'core overwritten after modification');
   assert(after.startsWith('# Protocol'), 'core has correct content');
+  assert(r.filesWritten >= 1, 'at least 1 file written (the overwritten core)');
   cleanup(d);
 }
 
-// === L: Modified binding -> preserve ===
+// ================================================================
+// H: Governance untouched
+// ================================================================
+console.log('H: Governance untouched');
+{
+  const d = tmpDir();
+  execute(d, pkgRoot);
+  const govDir = path.join(d, 'docs', 'gates');
+  fs.mkdirSync(govDir, { recursive: true });
+  fs.writeFileSync(path.join(govDir, 'test.md'), 'GATE');
+  execute(d, pkgRoot);
+  const after = fs.readFileSync(path.join(govDir, 'test.md'), 'utf8');
+  assert(after === 'GATE', 'governance file untouched');
+  cleanup(d);
+}
+
+// ================================================================
+// L: Modified binding -> preserve
+// ================================================================
 console.log('L: Modified binding -> preserve');
 {
   const d = tmpDir();
@@ -114,7 +139,9 @@ console.log('L: Modified binding -> preserve');
   cleanup(d);
 }
 
-// === M: Missing binding -> recreate ===
+// ================================================================
+// M: Missing binding -> recreate
+// ================================================================
 console.log('M: Missing binding -> recreate');
 {
   const d = tmpDir();
@@ -123,29 +150,18 @@ console.log('M: Missing binding -> recreate');
   if (m.binding.length > 0) {
     const bindPath = path.join(d, m.binding[0]);
     fs.unlinkSync(bindPath);
-    execute(d, pkgRoot);
+    const r = execute(d, pkgRoot);
     assert(fs.existsSync(bindPath), 'binding recreated after deletion');
+    assert(r.filesWritten >= 1, 'at least 1 file written (the recreated binding)');
   } else {
     assert(true, 'skipped (no binding files)');
   }
   cleanup(d);
 }
 
-// === H: Governance untouched ===
-console.log('H: Governance untouched');
-{
-  const d = tmpDir();
-  execute(d, pkgRoot);
-  const govDir = path.join(d, 'docs', 'gates');
-  fs.mkdirSync(govDir, { recursive: true });
-  fs.writeFileSync(path.join(govDir, 'test.md'), 'GATE');
-  execute(d, pkgRoot);
-  const after = fs.readFileSync(path.join(govDir, 'test.md'), 'utf8');
-  assert(after === 'GATE', 'governance file untouched');
-  cleanup(d);
-}
-
-// === CLI: invalid args ===
+// ================================================================
+// CLI: invalid args
+// ================================================================
 console.log('CLI: invalid args');
 {
   const r1 = parseArgs(['node', 'pcm.js', 'a', 'b']);
@@ -158,7 +174,9 @@ console.log('CLI: invalid args');
   assert(r3.target !== undefined, 'no args -> default target');
 }
 
-// === Selection: determinism ===
+// ================================================================
+// Selection: determinism
+// ================================================================
 console.log('Selection: deterministic');
 {
   const env = detect();
@@ -169,7 +187,9 @@ console.log('Selection: deterministic');
   assert(a1.priority === a2.priority, 'same priority');
 }
 
-// === Catalog: validation ===
+// ================================================================
+// Catalog: validation
+// ================================================================
 console.log('Catalog: validation');
 {
   const cat = loadCatalog(pkgRoot);
@@ -179,7 +199,9 @@ console.log('Catalog: validation');
   assert(isTrusted('generic'), 'generic is trusted');
 }
 
-// === capabilitiesSatisfied ===
+// ================================================================
+// capabilitiesSatisfied
+// ================================================================
 console.log('capabilitiesSatisfied');
 {
   assert(capabilitiesSatisfied(null, {}), 'null requires -> true');
@@ -188,7 +210,9 @@ console.log('capabilitiesSatisfied');
   assert(!capabilitiesSatisfied({ opencode: '*' }, {}), 'cap missing -> false');
 }
 
-// === MANIFEST: schema ===
+// ================================================================
+// MANIFEST: schema
+// ================================================================
 console.log('Manifest: schema');
 {
   const m = createManifest({
@@ -208,7 +232,9 @@ console.log('Manifest: schema');
   assert(Array.isArray(m.managedFiles), 'managedFiles is array');
 }
 
-// === MANIFEST: match ===
+// ================================================================
+// MANIFEST: match
+// ================================================================
 console.log('Manifest: match');
 {
   const m1 = createManifest({
@@ -225,11 +251,218 @@ console.log('Manifest: match');
     binding: [],
     managedFiles: [],
   });
-  // Both have same content except initializedAt (different timestamps)
-  // manifestsMatch checks everything except initializedAt
   assert(manifestsMatch(m1, m2), 'identical manifests match');
 }
 
-// === SUMMARY ===
+// ================================================================
+// MANIFEST: initializedAt stable on repeat init
+// ================================================================
+console.log('Manifest: initializedAt stable on repeat');
+{
+  const d = tmpDir();
+  execute(d, pkgRoot);
+  const m1 = getManifest(d);
+  const ts1 = m1.initializedAt;
+  // Wait a tick to ensure timestamp would differ if regenerated
+  execute(d, pkgRoot);
+  const m2 = getManifest(d);
+  assert(m2.initializedAt === ts1, 'initializedAt preserved across repeat init');
+  cleanup(d);
+}
+
+// ================================================================
+// MANIFEST: stale -> regenerate (different adapter)
+// ================================================================
+console.log('Manifest: stale adapter -> regenerate');
+{
+  const d = tmpDir();
+  execute(d, pkgRoot);
+  const m1 = getManifest(d);
+  const originalAdapter = m1.adapter.id;
+
+  // Tamper: change adapter to something different
+  m1.adapter.id = 'wrong-adapter';
+  writeManifest(d, m1);
+
+  // Re-init should regenerate (stale), not error
+  const r = execute(d, pkgRoot);
+  assert(r.exitCode === 0, 'stale manifest does not cause error');
+  const m2 = getManifest(d);
+  assert(m2.adapter.id === originalAdapter, 'adapter corrected after stale manifest');
+  cleanup(d);
+}
+
+// ================================================================
+// MANIFEST: stale -> regenerate (different version)
+// ================================================================
+console.log('Manifest: stale version -> regenerate');
+{
+  const d = tmpDir();
+  execute(d, pkgRoot);
+  const m1 = getManifest(d);
+
+  // Tamper: change distribution version
+  m1.distributionVersion = '0.0.1';
+  writeManifest(d, m1);
+
+  const r = execute(d, pkgRoot);
+  assert(r.exitCode === 0, 'stale version does not cause error');
+  const m2 = getManifest(d);
+  assert(m2.distributionVersion === '1.0.0', 'version corrected after stale manifest');
+  cleanup(d);
+}
+
+// ================================================================
+// MANIFEST: stale -> regenerate (partial state)
+// ================================================================
+console.log('Manifest: stale state -> regenerate');
+{
+  const d = tmpDir();
+  execute(d, pkgRoot);
+  const m1 = getManifest(d);
+
+  // Tamper: set state to partial
+  m1.state = 'partial';
+  writeManifest(d, m1);
+
+  const r = execute(d, pkgRoot);
+  assert(r.exitCode === 0, 'partial state does not cause error');
+  const m2 = getManifest(d);
+  assert(m2.state === 'bootstrapped', 'state repaired to bootstrapped');
+  cleanup(d);
+}
+
+// ================================================================
+// MANIFEST: manually modified -> preserve
+// ================================================================
+console.log('Manifest: manually modified -> preserve');
+{
+  const d = tmpDir();
+  execute(d, pkgRoot);
+  const m1 = getManifest(d);
+
+  // Tamper with a non-structural field (simulating user edit)
+  m1.adapter.version = 'user-edit';
+  writeManifest(d, m1);
+
+  const r = execute(d, pkgRoot);
+  assert(r.exitCode === 0, 'manual modification does not cause error');
+  const m2 = getManifest(d);
+  // Manifest should be preserved (not overwritten)
+  assert(m2.adapter.version === 'user-edit', 'manual modification preserved');
+  cleanup(d);
+}
+
+// ================================================================
+// MANIFEST: manually modified managedFiles -> stale (missing file)
+// ================================================================
+console.log('Manifest: manual mod with missing file -> stale');
+{
+  const d = tmpDir();
+  execute(d, pkgRoot);
+  const m1 = getManifest(d);
+
+  // Tamper: add a non-existent file to managedFiles
+  m1.managedFiles.push('pcm/docs/NONEXISTENT.md');
+  writeManifest(d, m1);
+
+  const r = execute(d, pkgRoot);
+  assert(r.exitCode === 0, 'stale managedFiles does not cause error');
+  const m2 = getManifest(d);
+  // Should be regenerated because managed file is missing from disk
+  assert(!m2.managedFiles.includes('pcm/docs/NONEXISTENT.md'), 'stale managedFiles corrected');
+  cleanup(d);
+}
+
+// ================================================================
+// ADAPTER CHANGE: re-init with different adapter -> succeeds
+// ================================================================
+console.log('Adapter change: re-init succeeds');
+{
+  const d = tmpDir();
+  execute(d, pkgRoot);
+  const m1 = getManifest(d);
+  const originalAdapter = m1.adapter.id;
+
+  // Tamper to simulate old adapter
+  m1.adapter.id = 'old-adapter';
+  m1.distributionVersion = '0.0.1';
+  writeManifest(d, m1);
+
+  // Re-init should succeed and use current adapter
+  const r = execute(d, pkgRoot);
+  assert(r.exitCode === 0, 'adapter change does not cause error');
+  const m2 = getManifest(d);
+  assert(m2.adapter.id === originalAdapter, 'current adapter used after change');
+  cleanup(d);
+}
+
+// ================================================================
+// FILES WRITTEN: first init counts correctly
+// ================================================================
+console.log('Files written: first init count');
+{
+  const d = tmpDir();
+  const r = execute(d, pkgRoot);
+  // First init: 3 core files + binding files (0 for generic, 2+ for opencode)
+  const m = getManifest(d);
+  const expectedCore = 3;
+  const expectedBinding = m.binding.length;
+  const expectedTotal = expectedCore + expectedBinding;
+  assert(r.filesWritten === expectedTotal,
+    `first init files written = ${expectedTotal} (got ${r.filesWritten})`);
+  cleanup(d);
+}
+
+// ================================================================
+// FILES WRITTEN: repeat init counts 0
+// ================================================================
+console.log('Files written: repeat init count 0');
+{
+  const d = tmpDir();
+  execute(d, pkgRoot);
+  const r = execute(d, pkgRoot);
+  assert(r.filesWritten === 0, 'repeat init files written = 0');
+  cleanup(d);
+}
+
+// ================================================================
+// FILES WRITTEN: modified core counts 1
+// ================================================================
+console.log('Files written: modified core count');
+{
+  const d = tmpDir();
+  execute(d, pkgRoot);
+  const pcmPath = path.join(d, 'pcm', 'docs', 'PCM.md');
+  fs.writeFileSync(pcmPath, 'MODIFIED');
+  const r = execute(d, pkgRoot);
+  assert(r.filesWritten === 1, `modified core count = 1 (got ${r.filesWritten})`);
+  cleanup(d);
+}
+
+// ================================================================
+// DETERMINISM: same output across runs
+// ================================================================
+console.log('Determinism: identical output');
+{
+  const d1 = tmpDir();
+  const d2 = tmpDir();
+  const r1 = execute(d1, pkgRoot);
+  const r2 = execute(d2, pkgRoot);
+  assert(r1.adapter === r2.adapter, 'same adapter');
+  assert(r1.filesWritten === r2.filesWritten, 'same files written');
+  const m1 = getManifest(d1);
+  const m2 = getManifest(d2);
+  // initializedAt differs (different timestamps), but everything else matches
+  assert(m1.adapter.id === m2.adapter.id, 'same manifest adapter');
+  assert(m1.state === m2.state, 'same manifest state');
+  assert(JSON.stringify(m1.binding) === JSON.stringify(m2.binding), 'same manifest binding');
+  cleanup(d1);
+  cleanup(d2);
+}
+
+// ================================================================
+// SUMMARY
+// ================================================================
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`);
 process.exit(failed > 0 ? 1 : 0);
