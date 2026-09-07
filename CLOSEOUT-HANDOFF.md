@@ -208,7 +208,7 @@ Implementation is stopped. The framework is:
 
 - CANONICAL (approved by PCM-GATE-01)
 - INTERNALLY VALIDATED (adversarial review passed)
-- EXTERNALLY VALIDATED (two independent implementations)
+- EXTERNALLY IMPLEMENTED (two materially different projects — same developer, single-developer bias noted)
 - CROSS-DOMAIN VALIDATED (software + ML pipeline + non-code)
 - CONFORMANCE-TESTED (42 structured tests + 20 scenario results)
 - FREEZE-READY (all 13 reviews passed)
