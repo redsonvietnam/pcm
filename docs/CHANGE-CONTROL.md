@@ -118,16 +118,31 @@ Define a lightweight policy for future PCM/PWF evolution.
 6. Note: Invalidates prior conformance evidence
 7. Note: Requires new Authority Gate
 
+---
+
+### Stability Graduation
+
+1. Create change proposal
+2. Document that no PCM/PWF semantic change has occurred
+3. Document accumulated governance evidence
+4. Submit to Authority Gate (mandatory)
+5. If approved → merge
+6. Update version (0.x → 1.0.0)
+7. Note: Prior conformance evidence remains valid
+8. Note: No migration required
+
 ## Versioning Rules
 
 - **Major:** PCM semantic changes (invariants, primitives, roles, state model)
 - **Minor:** Conformance changes, PWF policy changes, clarifications
 - **Patch:** Editorial changes, formatting, typo fixes
+- **Stability Graduation:** 0.x → 1.0.0 promotion without PCM/PWF semantic change (approved by PCM-GATE-02A)
 
 ## Authority Gate Requirements
 
 - All PCM semantic changes require Authority Gate
 - All conformance changes require Authority Gate
+- Stability Graduation (0.x → 1.0.0) requires Authority Gate
 - Authority Gate must be external (not self-approved)
 - Authority Gate decision is documented in `docs/gates/`
 

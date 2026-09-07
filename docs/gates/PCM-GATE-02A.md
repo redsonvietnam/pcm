@@ -3,13 +3,17 @@
 **Gate Identifier:** PCM-GATE-02A
 **Gate Type:** VERSIONING POLICY CLARIFICATION
 **Date:** 2026-09-07
-**Status:** PROPOSED — PENDING AUTHORITY DECISION
+**Status:** APPROVED — AUTHORITY DECISION RECORDED
+**Authority Decision:** PASS
+**Decision Date:** 2026-09-07
+**Decision Scope:** Stability Graduation policy clarification ONLY
 
 ---
 
-**THIS RECORD IS NOT AN AUTHORITY APPROVAL.**
-**IT IS A DECISION REQUEST.**
-**THE AUTHORITY DECISION HAS NOT YET BEEN MADE.**
+**THIS RECORD IS AN AUTHORITY APPROVAL.**
+**IT APPROVES THE STABILITY GRADUATION POLICY CLARIFICATION ONLY.**
+**IT DOES NOT APPROVE PCM/PWF v1.0.**
+**IT DOES NOT APPROVE PCM-GATE-02.**
 
 ---
 
@@ -85,11 +89,9 @@ The policy clarification modifies the versioning policy only. It does not modify
 
 **Policy clarification requires Authority Gate.**
 
-R1 must decide:
-- **PASS:** Approve the Stability Graduation policy clarification.
-- **FAIL:** Reject the Stability Graduation policy clarification.
+**Authority Decision:** PASS
 
-The Authority Gate for this policy clarification is separate from and prior to the Authority Gate for the v1.0 promotion (PCM-GATE-02).
+The Stability Graduation policy clarification is approved.
 
 ---
 
@@ -136,15 +138,14 @@ The proposed Stability Graduation policy clarification:
 
 **SEQUENTIAL.**
 
-PCM-GATE-02A (this gate) must be decided BEFORE PCM-GATE-02 (v1.0 promotion) can proceed.
+PCM-GATE-02A (this gate) has been decided BEFORE PCM-GATE-02 (v1.0 promotion).
 
-If PCM-GATE-02A is PASS:
+PCM-GATE-02A is PASS:
 - The Stability Graduation policy clarification is approved.
 - PCM-GATE-02 can proceed to assess the v1.0 promotion under the clarified policy.
 
-If PCM-GATE-02A is FAIL:
-- The existing versioning policy remains unchanged.
-- PCM-GATE-02 cannot proceed with v1.0 promotion (v0.3 is the only valid option).
+**PCM-GATE-02 remains a separate Authority decision.**
+**PCM-GATE-02A does NOT approve v1.0.**
 
 ---
 
@@ -168,23 +169,29 @@ If PCM-GATE-02A is FAIL:
 
 ---
 
-## 11. Decision Request
+## 11. Authority Decision
 
-**PASS:**
-Approve the Stability Graduation policy clarification. This enables:
+**Authority Decision:** PASS
+
+**Decision Date:** 2026-09-07
+
+**Decision Scope:** Stability Graduation policy clarification ONLY
+
+**Approved:**
 - A new versioning category for 0.x → 1.0.0 promotions.
-- PCM-GATE-02 to proceed with v1.0 promotion under the clarified policy.
+- PCM-GATE-02 can proceed with v1.0 promotion under the clarified policy.
 - No changes to PCM/PWF semantics.
 
-**FAIL:**
-Reject the Stability Graduation policy clarification. This means:
-- The existing versioning policy remains unchanged.
-- v0.2 → v1.0 is not valid without a PCM semantic change.
-- The alternative is v0.2 → v0.3 (minor bump) under current policy.
+**Not Approved by this Gate:**
+- PCM/PWF v1.0 (separate Authority decision required)
+- PCM-GATE-02 (separate Authority decision required)
+- Any adapter implementation
+- Any project adoption
+- Any installer/CLI implementation
 
 ---
 
-**THIS RECORD IS NOT AN AUTHORITY APPROVAL.**
-**THE AUTHORITY DECISION HAS NOT YET BEEN MADE.**
-**C1 IS THE OPERATOR, NOT AUTHORITY.**
-**C1 DOES NOT GRANT AUTHORITY APPROVAL.**
+**THIS RECORD IS AN AUTHORITY APPROVAL.**
+**IT APPROVES THE STABILITY GRADUATION POLICY CLARIFICATION ONLY.**
+**PCM/PWF v1.0 IS STILL PROPOSED / NOT CANONICAL.**
+**PCM-GATE-02 IS STILL PENDING.**
