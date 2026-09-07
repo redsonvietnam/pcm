@@ -738,7 +738,7 @@ The manifest is **generated** tooling state, NOT governance content. It is:
 
 - If the existing manifest is valid and matches the current adapter/version, the manifest content remains unchanged — no rewrite needed
 - If the existing manifest is stale (different adapter, different version, incomplete state), the manifest is regenerated from current installation state
-- If the existing manifest was manually modified by the user and a conflict is detected (content differs from what distribution would generate), the distribution MUST NOT silently destroy that modification — preserve the existing manifest and report: "Manifest was manually modified. Current state: <expected>. Existing: <actual>. Manifest not overwritten. Run with --manifest-override to regenerate."
+- If the existing manifest was manually modified by the user and a conflict is detected (content differs from what distribution would generate), the distribution MUST NOT silently destroy that modification — preserve the existing manifest and report: "Manifest was manually modified. Current state: <expected>. Existing: <actual>. Manifest not overwritten. To regenerate, delete the manifest and re-run npx pcm init."
 
 ### 10.7 `managedFiles` Semantics
 
