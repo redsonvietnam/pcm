@@ -99,7 +99,7 @@ Recovery: <suggested action>
 
 ### 1.7 Deterministic Result Reporting
 
-For the same target + same environment + same package version, the output MUST be identical across runs (modulo timestamps). The adapter name, file count, and target path are deterministic. Only `initializedAt` in the manifest is non-deterministic.
+For the same target + same environment + same package version, the output MUST be identical across runs (modulo timestamps). The adapter name, file count, and target path are deterministic. `initializedAt` is set once on first initialization and never changes — it is a stable provenance field, not a non-deterministic output.
 
 ---
 
@@ -709,8 +709,8 @@ If a target path resolves to a governance path → skip file, log warning.
 ### 10.4 Timestamp
 
 - `initializedAt` is set on first initialization
-- On repeat init (idempotent), `initializedAt` is preserved from the existing manifest
-- On new init (overwrite), `initializedAt` is set to current time
+- On repeat init (idempotent), `initializedAt` is preserved from the existing manifest — it is NEVER updated
+- On new init (fresh target with no manifest), `initializedAt` is set to current time
 
 ### 10.5 Deterministic vs Non-Deterministic
 
@@ -718,7 +718,7 @@ If a target path resolves to a governance path → skip file, log warning.
 |-------|---------------|
 | `pcmVersion` | Yes |
 | `distributionVersion` | Yes |
-| `initializedAt` | No (timestamp) |
+| `initializedAt` | No on first init (timestamp); Yes on repeat init (preserved) |
 | `adapter.*` | Yes |
 | `core.*` | Yes |
 | `binding` | Yes |
@@ -846,8 +846,8 @@ A file is governance if:
 1. Manifest exists and is valid → check if same adapter
 2. Core files exist with identical content → skip write
 3. Binding files exist with identical content → skip write
-4. Manifest updated with current timestamp (if changed)
-5. Output: "PCM initialized successfully. Adapter: <id>. Files written: 0." (or same count if manifest was rewritten)
+4. Manifest content remains unchanged (adapter, core paths, binding paths, managedFiles, state are identical; `initializedAt` is preserved from first init)
+5. Output: "PCM initialized successfully. Adapter: <id>. Files written: 0."
 
 ### 12.3 Partial Init
 
@@ -869,7 +869,7 @@ A file is governance if:
 
 **Observable behavior:**
 
-1. Manifest exists but references files that do not exist
+1. Manifest exists but references core files that do not exist
 2. OR core files are corrupted (empty, wrong content)
 3. Core files overwritten with correct content (core is package-managed)
 4. Binding files: only create if missing. Preserve locally modified binding files.
@@ -881,12 +881,20 @@ A file is governance if:
 A **locally customized binding** is NOT an invalid installation. A binding file that differs from the bundled artifact is a normal, expected condition — the project has customized its adapter configuration. This is valid and expected.
 
 An **invalid installation** is when required installation state is missing or malformed:
-- Manifest references files that do not exist
 - Core files are empty or corrupted
 - Manifest is malformed JSON
+- Manifest references a core file that does not exist
 - Required directories are missing
 
-A locally customized binding file does NOT trigger repair behavior. Only missing or corrupted core files and manifest trigger repair.
+A missing or modified binding file does NOT constitute an invalid installation. Binding files are handled by the preservation/creation rules (Section 11.2), not the repair rules.
+
+**Binding file missing — not invalid, just missing:**
+
+When the manifest lists a binding path but the file does not exist on disk:
+- This is NOT an invalid installation
+- The file is recreated from the bundled artifact
+- The manifest `state` remains `"bootstrapped"` (or is repaired to `"bootstrapped"` if the manifest was also incomplete)
+- This is the normal repair path for a partial init (see Section 12.3)
 
 ### 12.5 Manual Modification
 
@@ -1059,7 +1067,7 @@ For each test case, run `npx pcm init` twice on the same target and verify:
 
 1. Same adapter selected
 2. Same files written
-3. Same manifest content (except `initializedAt` if first run)
+3. Same manifest content (including `initializedAt` — it is preserved on repeat init)
 4. Same stdout output
 
 ---
@@ -1115,7 +1123,7 @@ Each layer operates within its defined scope.
 | 12 | Idempotency behavior defined? | **YES** — first/repeat/partial/invalid/manual-modification/different-version all specified |
 | 13 | Failure behavior defined? | **YES** — preflight checks, no atomicity, no rollback, exit 1 on error, no false success |
 | 14 | Portability defined? | **YES** — platform-neutral, no language assumptions, forward-slash paths |
-| 15 | Minimum test matrix defined? | **YES** — 11 scenarios (A–K), filesystem verification, determinism tests |
+| 15 | Minimum test matrix defined? | **YES** — 14 scenarios (A–N), filesystem verification, determinism tests |
 
 **ALL ANSWERS ARE YES.**
 
