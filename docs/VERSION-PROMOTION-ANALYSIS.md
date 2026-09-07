@@ -182,7 +182,7 @@ ab86be0
 
 ## 14. Governance Status
 
-**VERSIONING-BLOCKED**
+**VERSIONING-BLOCKED** (at time of analysis)
 
 The current versioning policy does not support the proposed v0.2 → v1.0 promotion without either:
 - A policy clarification (Option D)
@@ -191,3 +191,13 @@ The current versioning policy does not support the proposed v0.2 → v1.0 promot
 R1 must decide:
 1. Accept v0.3 under current policy (no policy change needed)
 2. Clarify policy to allow v1.0 stability graduation (policy change + Authority Gate)
+
+---
+
+**CURRENT STATUS (2026-09-07):**
+
+PCM-GATE-02A = PASS. The Stability Graduation policy clarification is now canonical.
+
+The v0.2 → v1.0 promotion is now valid as a Stability Graduation under the approved policy.
+
+This analysis was accurate at the time of creation. The versioning is no longer BLOCKED.

@@ -3,6 +3,7 @@
 **Status:** PROPOSAL — NOT AN AUTHORITY DECISION
 **Date:** 2026-09-07
 **Proposer:** C1 (Operator)
+**Version-Policy Classification:** STABILITY GRADUATION (0.x → 1.0.0)
 
 ---
 
@@ -17,6 +18,8 @@
 - **Commit:** f791185
 - **Branch:** main
 - **Proposed Version:** PCM/PWF v1.0
+- **Version-Policy Classification:** Stability Graduation (0.x → 1.0.0)
+- **Policy Authority:** Approved by PCM-GATE-02A (Stability Graduation policy clarification)
 
 ## 2. Proposed Scope
 
@@ -49,6 +52,8 @@ Changes since ab9f619:
 **Core PCM semantics (primitives, invariants, state model, roles):** UNCHANGED since v0.2.
 
 **Core PWF semantics (mandatory behaviors):** UNCHANGED since v0.2.
+
+**Version-Policy Classification:** This promotion is classified as **Stability Graduation** (0.x → 1.0.0) under the versioning policy approved by PCM-GATE-02A. It is NOT classified as a Major version bump (which would require PCM semantic changes).
 
 **What changed:**
 - Version header designation (v0.2 → v1.0)
@@ -86,9 +91,11 @@ Conformance evidence is observational, not certified.
 
 ## 8. Recommendation
 
+**This proposal is now consistent with the canonical Stability Graduation policy (approved by PCM-GATE-02A).**
+
 **If R1/Authority determines the semantic content is acceptable:**
 
-Approve v1.0 at the proposed commit. The core semantics are unchanged; the version designation reflects the accumulated work.
+Approve v1.0 at the proposed commit as a Stability Graduation. The core semantics are unchanged; the version designation reflects the accumulated work.
 
 **If R1/Authority determines independent review is needed:**
 
