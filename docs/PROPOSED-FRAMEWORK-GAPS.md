@@ -106,4 +106,4 @@ All observed friction was resolved at the adapter or PWF policy layer:
 - Formal conflict resolution → PWF recommendation (not required)
 - Multi-party workflow → Use case (not required)
 
-**The canonical PCM v1.0 specification remains unchanged.**
+**The canonical PCM v0.2 specification remains unchanged. Proposed v1.0 has identical semantics.**

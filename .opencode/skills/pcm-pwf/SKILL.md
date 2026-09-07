@@ -81,7 +81,7 @@ Never:
 
 ## Authority
 
-This skill is CANONICAL as part of PCM/PWF v0.2 baseline approved by PCM-GATE-01.
+This skill is CANONICAL as part of PCM/PWF v0.2 baseline approved by PCM-GATE-01. A proposed v1.0 promotion is pending PCM-GATE-02.
 
 ## Implementation Notes
 

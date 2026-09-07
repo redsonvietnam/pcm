@@ -346,7 +346,7 @@ The framework is CANONICAL and ready for external implementation validation.
 | Supervision | ML Pipeline | Python | All 6 PASS | Minimal | PASS-WITH-ADAPTER |
 | Procurement | Office Operations | N/A | All 6 PASS | N/A | PASS |
 
-**Conclusion:** PCM/PWF v1.0 is externally validated by independent implementations in materially different domains without requiring framework changes.
+**Conclusion:** PCM/PWF proposed v1.0 was analyzed in two materially different projects (same developer) without requiring framework changes. This is operator analysis, not independent external validation.
 
 ## 12. FINALIZATION-01 Observations
 
@@ -376,9 +376,9 @@ All reviews (minimality, invariants, authority, state, handoff, PWF, conformance
 
 ### 12.5 Freeze Determination
 
-**FREEZE-READY**
+**Operator assessment: FREEZE-READY pending Authority Gate**
 
-The framework is:
+The proposed framework is:
 - Coherent (no contradictions)
 - Minimal (no unnecessary primitives/invariants)
 - Complete (covers essential failure classes)
@@ -405,4 +405,4 @@ The framework is:
 | Versioning Review | PASS |
 | Adoption Boundary | PASS |
 
-**Conclusion:** PCM/PWF v1.0 is FREEZE-READY. The next workstream is PCM-ADOPTION-01: external implementation in a multi-party project in a different domain.
+**Conclusion:** Operator assessment: PCM/PWF proposed v1.0 is freeze-ready pending Authority Gate approval. Canonical baseline remains PCM/PWF v0.2 at ab9f619 (approved by PCM-GATE-01).

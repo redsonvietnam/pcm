@@ -245,4 +245,4 @@ PCM versions follow semantic versioning:
 
 ## 17. Authority
 
-This specification is CANONICAL as part of PCM/PWF v1.0 baseline approved by PCM-GATE-01. Future semantic changes are subject to Authority Gate.
+This specification is CANONICAL as part of PCM/PWF v0.2 baseline approved by PCM-GATE-01. A proposed v1.0 promotion is pending PCM-GATE-02.

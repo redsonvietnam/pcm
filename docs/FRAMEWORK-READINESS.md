@@ -7,15 +7,17 @@
 
 ## CURRENT VERSION
 
-PCM/PWF v1.0
+PCM/PWF v0.2 (canonical, approved by PCM-GATE-01)
+Proposed v1.0 (pending PCM-GATE-02)
 
 ## CANONICAL STATUS
 
-Approved by PCM-GATE-01. Canonical baseline: 8c23e32.
+PCM/PWF v0.2 at commit ab9f619 is Authority-approved canonical.
+Proposed v1.0 promotion is pending PCM-GATE-02.
 
 ## FREEZE DECISION
 
-**FREEZE-READY**
+**Operator assessment: proposed v1.0 is freeze-ready pending Authority Gate.**
 
 ---
 
@@ -148,9 +150,9 @@ See docs/ADOPTION-BOUNDARY.md.
 
 ## Conclusion
 
-PCM/PWF v1.0 is FREEZE-READY.
+**Operator assessment:** Proposed PCM/PWF v1.0 is freeze-ready pending Authority Gate approval.
 
-The framework is:
+The proposed framework is:
 - Coherent (no contradictions)
 - Minimal (no unnecessary primitives/invariants)
 - Complete (covers essential failure classes)
@@ -159,4 +161,5 @@ The framework is:
 - Conformance-testable (observable criteria)
 - Appropriate in complexity
 
-The next workstream is PCM-ADOPTION-01: external implementation in a multi-party project in a different domain.
+**Canonical baseline:** PCM/PWF v0.2 at ab9f619 (approved by PCM-GATE-01).
+**Proposed promotion:** PCM/PWF v1.0 (pending PCM-GATE-02).
