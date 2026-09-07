@@ -1,8 +1,9 @@
 # Protocol Workflow Framework (PWF)
 
-**Version:** 1.0 (Canonical)  
+**Version:** 0.2 (Canonical)  
 **Status:** Approved — PCM-GATE-01  
 **Authority:** External Authority Gate  
+**Note:** Proposed v1.0 promotion pending PCM-GATE-02.
 
 ## 1. Purpose
 

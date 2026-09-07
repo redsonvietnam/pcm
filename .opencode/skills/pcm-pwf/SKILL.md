@@ -1,7 +1,7 @@
 # PCM/PWF OpenCode Skill
 
-**Version:** 1.0  
-**Status:** Canonical Binding  
+**Version:** 0.2 (Canonical Binding)  
+**Status:** Approved — PCM-GATE-01  
 
 ## Purpose
 

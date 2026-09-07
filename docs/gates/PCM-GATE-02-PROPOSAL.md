@@ -14,7 +14,7 @@
 
 ## 1. Proposed Baseline
 
-- **Commit:** 01ac6e0 (or 32a491f if claim correction is not required)
+- **Commit:** f791185
 - **Branch:** main
 - **Proposed Version:** PCM/PWF v1.0
 
@@ -24,7 +24,7 @@ All documents in the repository at the proposed commit, including:
 - Core specifications: PCM.md, PWF.md, CONFORMANCE.md
 - Authority gate record: PCM-GATE-01.md
 - Validation artifacts: validation/bamso/, validation/supervision/
-- Review documents: 14 finalization review documents
+- Review documents: 13 finalization review documents
 - Conformance artifacts: conformance/scenarios/, conformance/CONFORMANCE-MATRIX.md
 - Supporting documents: PORTABILITY.md, ADAPTER-MODEL.md, etc.
 
@@ -41,6 +41,8 @@ Changes since ab9f619:
 | fcec030 | PCM-VALIDATION-01 external implementation validation | New validation artifacts |
 | 32a491f | PCM-FINALIZATION-01 framework freeze review | New review documents |
 | 01ac6e0 | Correct claim precision in finalization handoff | Fix overclaim wording |
+| dbcb909 | Governance consistency audit, gate proposal, evidence provenance | New governance documents |
+| f791185 | Governance correction — remediate version/provenance claims | Fix authority/version metadata |
 
 ## 4. Semantic Impact Assessment
 

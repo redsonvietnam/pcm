@@ -18,7 +18,7 @@
 ## PROPOSED STATE
 
 **PCM/PWF v1.0**
-- Current proposed baseline: 01ac6e0 (or dbcb909 after governance correction)
+- Current proposed baseline: f791185
 - Status: Pending PCM-GATE-02
 - NOT Authority-approved
 
@@ -44,7 +44,7 @@
 
 ## REVIEW STATE
 
-**Finalization reviews:** 14 documents created
+**Finalization reviews:** 13 documents created
 - All operator self-reviews
 - No independent adversarial review
 
