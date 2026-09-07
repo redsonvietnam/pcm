@@ -79,7 +79,7 @@ The architecture distinguishes three independent sources of truth. Each has a di
 
 ### 5.2 Adapter Catalog / Discovery Source
 
-**What it is:** The authoritative list of known adapters, their declared platform compatibility, and their distribution sources.
+**What it is:** The authoritative list of known adapters, their declared platform compatibility, and their bundled artifact paths.
 
 **Location:** Bundled with the `pcm` npm package as `registry/pcm-adapters.json`.
 
@@ -101,6 +101,7 @@ The architecture distinguishes three independent sources of truth. Each has a di
 - What PCM version is installed
 - What distribution version installed it
 - What binding/adapter is selected
+- What adapter version is installed
 - What files were written by the distribution mechanism
 - What files are project-owned governance content
 
@@ -113,117 +114,101 @@ The architecture distinguishes three independent sources of truth. Each has a di
 | PCM invariants | Defines | Does not define | Does not define |
 | Adapter existence | Does not define | Lists | May contain |
 | Adapter trust | Does not define | Does not decide | Policy decides |
+| Adapter artifact | Does not define | Points to bundle | Records provenance |
 | Governance state | Defines semantics | Does not define | Project-owned |
 | File provenance | Does not define | Does not define | Manifest records |
 
 ---
 
-## 6. Candidate Distribution Models
+## 6. Adapter Distribution Concepts
 
-### 6.1 Centralized CLI
+Four distinct concepts must not be collapsed:
 
-`npx pcm init` as a standalone CLI that bundles all adapter logic internally. Adapters are not files in the target repository — they are baked into the CLI.
+### 6.1 Catalog Entry
 
-**Pros:** Simple to run. No external dependencies.  
-**Cons:** Adapter updates require CLI updates. Cannot support adapters the CLI author did not anticipate. Violates adapter boundary.
+**What it is:** A metadata record in the adapter catalog that declares an adapter exists and is compatible with certain environments.
 
-### 6.2 Package-Bundled Artifacts
+**Contains:** Adapter ID, name, platforms, shells, tested status, priority, bundled artifact path.
 
-`npx pcm init` as a package-bundled installer. The npm package contains:
-- PCM/PWF specification artifacts (exact copies)
-- Adapter catalog
-- Adapter file templates
-- Selection logic
+**Does NOT contain:** Actual adapter files, trust decisions, installation state.
 
-**Pros:** Deterministic. Offline-capable. Version-pinned. Least fragile.  
-**Cons:** Adapter updates require package updates.
+**Authority:** Discovery only. Makes the adapter findable. Does NOT make it usable.
 
-### 6.3 Registry + Generator
+### 6.2 Adapter Artifact
 
-`npx pcm init` as a registry-driven generator. The CLI reads an external registry, selects an adapter, and writes adapter files into the target repository.
+**What it is:** The actual files that, when written to a target repository, constitute the adapter binding. For the OpenCode adapter: `.opencode/skills/pcm-pwf/SKILL.md` and `.opencode/rules/pcm-core.mdc`.
 
-**Pros:** Adapters are files in the target repo. Updateable without CLI changes.  
-**Cons:** Requires network. External registry is a single point of failure. Generator must be correct for every adapter.
+**Location (MVP):** Bundled inside the `pcm` npm package under `adapters/<adapter-id>/`.
 
-### 6.4 Template Repository
+**Authority:** None. Adapter artifacts are implementation files, not authority sources.
 
-`npx pcm init` clones a template repository and customizes it for the target.
+### 6.3 Adapter Distribution Source
 
-**Pros:** Simple mental model. Version control built-in.  
-**Cons:** Templates diverge. Customization is ad-hoc. No registry means no deterministic selection.
+**What it is:** The mechanism by which adapter artifacts reach the `npx pcm init` process.
 
-### 6.5 Hybrid (Package + Template + CLI)
+**MVP source:** The `pcm` npm package bundles adapter artifacts directly. No external fetch required.
 
-`npx pcm init` as a package-bundled bootstrap that combines:
-- Package-bundled PCM/PWF artifacts and catalog
-- Template for structure
-- CLI for orchestration
+**Future extension:** Independent adapter packages, Git release artifacts, or other distribution mechanisms. The architecture must not foreclose these, but MVP requires only the bundled path.
 
-**Pros:** Deterministic (package), structured (template), usable (CLI).  
-**Cons:** More complex than any single model. Requires clear layering.
+### 6.4 Target Binding
+
+**What it is:** The adapter artifacts as they exist in the target repository after installation. The files on disk that the target tool (OpenCode, Copilot, etc.) actually reads.
+
+**Location:** Tool-specific paths (e.g., `.opencode/skills/pcm-pwf/SKILL.md`).
+
+**Authority:** None. Binding files are implementation files. They must not violate PCM invariants (per `docs/ADAPTER-MODEL.md`).
 
 ---
 
-## 7. Chosen Architecture
+## 7. Chosen Distribution Model
 
-**Model 5 (Hybrid — Package + Template + CLI)** is selected as the distribution architecture.
+**MODEL A: Package-Bundled Adapters** is selected for MVP.
 
-The rationale: Package provides determinism and offline capability (Goals 1, 5), template provides structure (Goal 2), CLI provides UX (Goal 3). Together they satisfy all six goals while preserving adapter boundary and source-of-truth separation.
+### 7.1 Decision
 
-### 7.1 Core Distribution Source (R1 Finding #3)
+Adapter implementations used by `npx pcm init` are bundled in the PCM npm distribution. All adapters listed in the catalog are `built-in` — their artifacts ship inside the package.
 
-**Chosen model: Package-bundled exact artifacts.**
+### 7.2 Implications
 
-`npx pcm init` obtains PCM/PWF specification artifacts from the installed npm package. The package contains exact copies of:
+| Property | Value |
+|----------|-------|
+| Artifact source | `pcm` npm package, path `adapters/<adapter-id>/` |
+| Network dependency | None (after `npm install`) |
+| Offline bootstrap | Works |
+| Version pinning | Package version controls adapter artifact version |
+| Generic adapter | Always available, always trusted, always works |
+| Trust evaluation | Package integrity is sufficient for all bundled adapters |
 
-- `docs/PCM.md` (canonical PCM specification)
-- `docs/PWF.md` (canonical PWF specification)
-- `docs/CONFORMANCE.md` (conformance criteria)
-- `docs/ADAPTER-MODEL.md` (adapter capability contract)
+### 7.3 Why NOT Model B (Independently Distributed) for MVP
 
-**Why package-bundled:**
-- Least fragile — no network dependency for core artifacts
-- Deterministic — same package version produces same artifacts
-- Version-pinned — package version controls which PCM/PWF version is installed
-- Offline-capable — works without network after first `npm install`
-- Audit-friendly — package-lock.json records exact version used
+Model B (independently distributed adapters) requires:
+- Artifact retrieval mechanism (network fetch)
+- Integrity verification (checksums, signatures)
+- Provenance tracking (exact source, version, hash)
+- Offline fallback logic
+- Complex trust evaluation per adapter
 
-**Why NOT external registry:**
-- External registry is a single point of failure
-- Network dependency breaks offline capability
-- Registry availability ≠ artifact correctness
-- Version drift between registry and local state
+These are valid engineering concerns but add fragility and complexity beyond MVP scope. The architecture must not foreclose Model B — it can be added later by introducing an `artifactSource` field in the catalog.
 
-**Why NOT Git release artifacts:**
-- Git clone is heavier than npm install
-- Git availability is not guaranteed on all machines
-- Release artifact format is less standardized than npm
+### 7.4 Future Extension to Model B
 
-### 7.2 Adapter Catalog Source (R1 Finding #4)
+The catalog structure supports future extension to independently-distributed adapters by adding:
 
-**Chosen model: Package-bundled catalog.**
+```json
+{
+  "artifactSource": {
+    "type": "npm",
+    "package": "@pcm/adapter-opencode",
+    "version": "^1.0.0"
+  }
+}
+```
 
-The adapter catalog (`registry/pcm-adapters.json`) is bundled with the `pcm` npm package. It is NOT a repository-local file.
+When `artifactSource` is absent, the adapter is bundled (Model A). When present, the adapter is fetched from the specified source (Model B). This preserves forward compatibility without requiring Model B implementation in MVP.
 
-**Why package-bundled:**
-- No repository-local registry to manage
-- Version-pinned — catalog version matches package version
-- Deterministic — same package version produces same catalog
-- No external service dependency
+---
 
-**Why NOT repository-local registry:**
-- Repository-local registry would require each project to manage its own adapter list
-- Creates divergence between projects
-- Requires governance to maintain
-- Not necessary for MVP
-
-**Why NOT external service:**
-- Single point of failure
-- Network dependency
-- Availability ≠ correctness
-- Privacy concerns
-
-### 7.3 Architecture Diagram
+## 8. Architecture Diagram
 
 ```
 PCM/PWF CANONICAL SEMANTIC SOURCE
@@ -235,7 +220,7 @@ PCM/PWF CANONICAL SEMANTIC SOURCE
 DISTRIBUTION ARTIFACT
   pcm npm package v1.0
   (contains: PCM/PWF specs, adapter catalog,
-   adapter templates, selection logic)
+   adapter artifacts [bundled], selection logic)
             │
             ▼
 CLI / BOOTSTRAP
@@ -247,13 +232,22 @@ CLI / BOOTSTRAP
 ADAPTER CATALOG / DISCOVERY     ENVIRONMENT DETECTION
   registry/pcm-adapters.json      (observes: platform,
   (lists known adapters,            shell, tools)
-   declared compatibility)         (env ≠ availability)
+   bundled artifact paths,          (env ≠ availability)
+   declared compatibility)
             │                         │
             ▼                         ▼
       ┌─────────────────────────────────┐
       │   DETERMINISTIC SELECTION       │
       │   catalog + env → adapter       │
       │   (tested first, then priority) │
+      └───────────────┬─────────────────┘
+                      │
+                      ▼
+            ARTIFACT RESOLUTION
+      ┌─────────────────────────────────┐
+      │   catalog.artifact → package    │
+      │   path (bundled, MVP)           │
+      │   read files from package       │
       └───────────────┬─────────────────┘
                       │
                       ▼
@@ -286,18 +280,19 @@ Project governance  Trust policy       Bootstrap process
 
 ---
 
-## 8. Layer Boundaries
+## 9. Layer Boundaries
 
-The distribution architecture has four layers:
+The distribution architecture has five layers:
 
 | Layer | Scope | Authority |
 |-------|-------|-----------|
 | **Semantic** | PCM/PWF specification | Defines protocol semantics |
 | **Discovery** | Adapter catalog, environment observation | Finds candidates, observes environment |
 | **Selection** | Deterministic adapter selection | Picks exactly one adapter |
+| **Resolution** | Artifact path resolution | Maps catalog entry to bundled files |
 | **Installation** | File writing, manifest creation | Writes to target repository |
 
-### 8.1 Semantic Layer
+### 9.1 Semantic Layer
 
 Semantic layer:
 - Provides the canonical PCM/PWF specification
@@ -306,7 +301,7 @@ Semantic layer:
 - Does NOT select adapters
 - Does NOT write files
 
-### 8.2 Discovery Layer
+### 9.2 Discovery Layer
 
 Discovery layer:
 - Reads adapter catalog
@@ -316,7 +311,7 @@ Discovery layer:
 - Does NOT decide suitability
 - Does NOT write files
 
-### 8.3 Selection Layer
+### 9.3 Selection Layer
 
 Selection layer:
 - Reads catalog
@@ -327,7 +322,18 @@ Selection layer:
 - Does NOT modify catalog
 - Does NOT write files
 
-### 8.4 Installation Layer
+### 9.4 Resolution Layer
+
+Resolution layer:
+- Takes selected adapter catalog entry
+- Resolves artifact path (bundled in package for MVP)
+- Reads adapter files from package
+- Returns file content for installation
+- Does NOT detect environment
+- Does NOT select adapters
+- Does NOT write files to target
+
+### 9.5 Installation Layer
 
 Installation layer:
 - Writes files to target repository
@@ -335,13 +341,14 @@ Installation layer:
 - Reports what was written
 - Does NOT detect environment
 - Does NOT select adapters
+- Does NOT resolve artifacts
 - Does NOT define semantics
 
 ---
 
-## 9. One-Line Bootstrap
+## 10. One-Line Bootstrap
 
-### 9.1 The Command
+### 10.1 The Command
 
 ```
 npx pcm init
@@ -351,17 +358,18 @@ No arguments. No options. No configuration. Defaults to the current working repo
 
 Optional explicit arguments may exist (e.g., `npx pcm init /path/to/repo`), but zero-argument behavior is fully defined: bootstrap the current working directory.
 
-### 9.2 What Happens
+### 10.2 What Happens
 
 1. Package-bundled catalog is read
 2. Environment is detected (observation only)
 3. Adapter is selected (deterministic)
-4. Core artifacts are written (PCM/PWF specs)
-5. Binding/adapter files are written
-6. Manifest is created
-7. Result is printed
+4. Artifact is resolved (bundled path → file content)
+5. Core artifacts are written (PCM/PWF specs)
+6. Binding/adapter files are written
+7. Manifest is created
+8. Result is printed
 
-### 9.3 What the User Gets
+### 10.3 What the User Gets
 
 A valid PCM-enabled repository with three layers:
 
@@ -385,7 +393,7 @@ The user does NOT get:
 
 A repository must not be considered PCM-enabled merely because an adapter file exists. PCM-enablement requires core artifacts AND binding AND (optionally) tooling.
 
-### 9.4 Minimum Valid PCM Installation
+### 10.4 Minimum Valid PCM Installation
 
 A minimum valid PCM installation requires:
 
@@ -397,9 +405,9 @@ Without core specification artifacts, adapter files alone do not constitute a PC
 
 ---
 
-## 10. Bootstrap Lifecycle
+## 11. Bootstrap Lifecycle
 
-### 10.1 States
+### 11.1 States
 
 | State | Meaning |
 |-------|---------|
@@ -409,7 +417,7 @@ Without core specification artifacts, adapter files alone do not constitute a PC
 | **PARTIAL** | Some artifacts present but incomplete |
 | **INVALID** | Artifacts present but corrupted |
 
-### 10.2 Transitions
+### 11.2 Transitions
 
 ```
 NOT-BOOTSTRAPPED ──[npx pcm init]──► BOOTSTRAPPING
@@ -421,22 +429,23 @@ INVALID ──[npx pcm init]──► BOOTSTRAPPED
 PARTIAL ──[npx pcm init]──► BOOTSTRAPPED
 ```
 
-### 10.3 Idempotency
+### 11.3 Idempotency
 
 Running `npx pcm init` on an already-bootstrapped repository:
 1. Reads package-bundled catalog
 2. Detects environment
 3. Selects adapter
-4. Checks if core artifacts and binding already exist
-5. If valid → does nothing (idempotent)
-6. If invalid → rewrites artifacts
-7. Returns same result as first run
+4. Resolves artifact from package
+5. Checks if core artifacts and binding already exist
+6. If valid → does nothing (idempotent)
+7. If invalid → rewrites artifacts
+8. Returns same result as first run
 
 ---
 
-## 11. Repository State
+## 12. Repository State
 
-### 11.1 What `npx pcm init` Reads
+### 12.1 What `npx pcm init` Reads
 
 Before bootstrap, `npx pcm init` reads:
 
@@ -444,8 +453,9 @@ Before bootstrap, `npx pcm init` reads:
 2. **Platform** — What OS? What shell? What architecture?
 3. **Existing tools** — Is OpenCode available? Copilot? Codex?
 4. **Package catalog** — `registry/pcm-adapters.json` (bundled in npm package)
+5. **Package adapter artifacts** — `adapters/<adapter-id>/` (bundled in npm package)
 
-### 11.2 What `npx pcm init` Writes
+### 12.2 What `npx pcm init` Writes
 
 After bootstrap, `npx pcm init` writes:
 
@@ -454,7 +464,7 @@ After bootstrap, `npx pcm init` writes:
 3. **Manifest** — `pcm/.pcm-manifest.json` recording installation state
 4. **No governance content** — `npx pcm init` does NOT write `docs/gates/*`, tasks, handoffs, or proposals
 
-### 11.3 What `npx pcm init` Does NOT Write
+### 12.3 What `npx pcm init` Does NOT Write
 
 `npx pcm init` does NOT write:
 - Implementation code
@@ -467,9 +477,9 @@ After bootstrap, `npx pcm init` writes:
 
 ---
 
-## 12. Target-State Ownership
+## 13. Target-State Ownership
 
-### 12.1 Four Ownership Categories
+### 13.1 Four Ownership Categories
 
 | Category | Description | Package-Managed? | Owner |
 |----------|-------------|-------------------|-------|
@@ -478,7 +488,7 @@ After bootstrap, `npx pcm init` writes:
 | **Tooling State** | Manifest, generated configuration | Yes (generated) | Distribution mechanism |
 | **Governance State** | Gates, tasks, handoffs, proposals, canonical decisions | NEVER | Project (user-owned) |
 
-### 12.2 Ownership Rules
+### 13.2 Ownership Rules
 
 **Distributed Core:**
 - Package-managed — updated by `pcm update`
@@ -505,7 +515,7 @@ After bootstrap, `npx pcm init` writes:
 - Includes: `docs/gates/*`, `pcm/workstreams/*`, tasks, handoffs, proposals, canonical decisions
 - Must survive distribution updates intact
 
-### 12.3 Ownership Detection (R1 Finding #11)
+### 13.3 Ownership Detection
 
 Ownership is determined by **declared relationship**, not incidental tool presence.
 
@@ -526,9 +536,9 @@ Tool presence is environment observation, not repository ownership declaration.
 
 ---
 
-## 13. Environment Detection
+## 14. Environment Detection
 
-### 13.1 What Detection Does
+### 14.1 What Detection Does
 
 Detection observes the environment. It answers:
 
@@ -537,7 +547,7 @@ Detection observes the environment. It answers:
 3. What git version?
 4. What tool is available? (opencode, copilot, codex, cursor, etc.)
 
-### 13.2 What Detection Does NOT Do
+### 14.2 What Detection Does NOT Do
 
 Detection does NOT:
 
@@ -549,7 +559,7 @@ Detection does NOT:
 
 Detection informs. Catalog lists candidates. Policy decides trust. Selection picks one.
 
-### 13.3 Detection ≠ Availability
+### 14.3 Detection ≠ Availability
 
 **Critical distinction:** Detecting that OpenCode is installed does NOT mean the OpenCode adapter is available. Detection is an observation; adapter availability is a catalog lookup; adapter trust is a policy decision.
 
@@ -578,35 +588,35 @@ This separation prevents:
 
 ---
 
-## 14. Adapter Discovery
+## 15. Adapter Discovery
 
-### 14.1 How Adapters Are Discovered
+### 15.1 How Adapters Are Discovered
 
 Adapters are discovered through the package-bundled catalog. The catalog is the only source for adapter existence and declared compatibility.
 
-### 14.2 Discovery Process
+### 15.2 Discovery Process
 
 1. Read package-bundled catalog
 2. Filter adapters by:
    - Platform match (windows/linux/macos)
    - Shell match (powershell/bash/zsh)
    - Tested status (tested/untested)
-3. If multiple adapters match → apply selection algorithm (Section 17)
-4. If no adapters match → use generic adapter (Section 16)
+3. If multiple adapters match → apply selection algorithm (Section 18)
+4. If no adapters match → use generic adapter (Section 17)
 
-### 14.3 Discovery ≠ Selection ≠ Trust
+### 15.3 Discovery ≠ Selection ≠ Trust ≠ Resolution
 
-Discovery finds all candidates. Trust policy filters to trusted candidates. Selection picks exactly one. These are separate steps.
+Discovery finds all candidates. Trust policy filters to trusted candidates. Selection picks exactly one. Resolution maps the selection to bundled file content. These are separate steps.
 
 ---
 
-## 15. Adapter Catalog
+## 16. Adapter Catalog
 
-### 15.1 Catalog Location
+### 16.1 Catalog Location
 
 Bundled in the `pcm` npm package at `registry/pcm-adapters.json`. NOT a repository-local file.
 
-### 15.2 Catalog Structure
+### 16.2 Catalog Structure
 
 ```json
 {
@@ -616,84 +626,100 @@ Bundled in the `pcm` npm package at `registry/pcm-adapters.json`. NOT a reposito
     {
       "id": "opencode",
       "name": "OpenCode Adapter",
-      "repo": "redsonvietnam/pcm-pwf-opencode",
       "platforms": ["windows", "linux", "macos"],
       "shells": ["powershell", "bash", "zsh"],
       "tested": true,
       "priority": 1,
-      "origin": "independently-distributed"
+      "artifact": "adapters/opencode"
     },
     {
       "id": "copilot",
       "name": "GitHub Copilot Adapter",
-      "repo": "redsonvietnam/pcm-pwf-copilot",
       "platforms": ["windows", "linux", "macos"],
       "shells": ["powershell", "bash", "zsh"],
       "tested": true,
       "priority": 2,
-      "origin": "independently-distributed"
+      "artifact": "adapters/copilot"
     },
     {
       "id": "codex",
       "name": "Codex Adapter",
-      "repo": "redsonvietnam/pcm-pwf-codex",
       "platforms": ["windows", "linux", "macos"],
       "shells": ["powershell", "bash", "zsh"],
       "tested": false,
       "priority": 3,
-      "origin": "independently-distributed"
+      "artifact": "adapters/codex"
     },
     {
       "id": "generic",
       "name": "Generic Adapter",
-      "repo": null,
       "platforms": ["*"],
       "shells": ["*"],
       "tested": true,
       "priority": 999,
-      "origin": "built-in"
+      "artifact": null
     }
   ]
 }
 ```
 
-### 15.3 Catalog Rules
+### 16.3 Catalog Field Definitions
+
+| Field | Type | Required | Meaning |
+|-------|------|----------|---------|
+| `id` | string | yes | Unique adapter identifier |
+| `name` | string | yes | Human-readable name |
+| `platforms` | string[] | yes | Supported platforms (`["*"]` = all) |
+| `shells` | string[] | yes | Supported shells (`["*"]` = all) |
+| `tested` | boolean | yes | Whether adapter has been validated on listed platforms |
+| `priority` | number | yes | Selection order (lower = higher priority) |
+| `artifact` | string\|null | yes | Relative path to bundled adapter files within package; `null` = generic (no binding files) |
+
+### 16.4 Catalog Rules
 
 1. Every adapter MUST be listed in the catalog to be discoverable
 2. Adapters not in the catalog are not discoverable by `npx pcm init`
 3. The `defaultAdapter` is used when no other adapter matches
 4. `priority` determines selection order (lower = higher priority)
 5. `tested` indicates whether the adapter has been validated on the listed platforms
-6. `origin` indicates how the adapter is distributed (built-in, independently-distributed, repo-local)
+6. `artifact` points to the bundled path; `null` means the adapter provides no binding files (generic)
 7. Catalog entry ≠ trust — catalog lists candidates; policy decides trust
+8. Catalog entry ≠ artifact — catalog is metadata; artifact is files
+
+### 16.5 What `repo` Meant and Why It Is Removed
+
+Previous versions of the catalog included a `repo` field (e.g., `"repo": "redsonvietnam/pcm-pwf-opencode"`). This was ambiguous — it could mean source repository, artifact source, or distribution source.
+
+For MVP with bundled adapters, `repo` is not needed. The `artifact` field provides the exact bundled path. The source repository of the adapter is reference metadata, not a distribution mechanism. If future versions need to reference source repositories, they can add a `sourceRepo` field as informational metadata without distribution semantics.
 
 ---
 
-## 16. Generic Adapter
+## 17. Generic Adapter
 
-### 16.1 Purpose
+### 17.1 Purpose
 
 The generic adapter is the first-class fallback when:
 1. No specific adapter matches the environment
 2. The repository is unknown
-3. The catalog is unavailable (should not happen with package-bundled catalog)
+3. No trusted specialized adapter is available
 
-### 16.2 What the Generic Adapter Provides
+### 17.2 What the Generic Adapter Provides
 
 The generic adapter provides:
 - Core specification artifacts (`pcm/docs/PCM.md`, `pcm/docs/PWF.md`, `pcm/docs/CONFORMANCE.md`)
 - Basic directory structure (`pcm/docs/`, `pcm/workstreams/`)
 - Manifest creation
 
-### 16.3 What the Generic Adapter Does NOT Provide
+### 17.3 What the Generic Adapter Does NOT Provide
 
 The generic adapter does NOT provide:
 - Tool-specific commands
 - Platform-specific configuration
 - Adapter-specific workflows
 - Integration with specific tools
+- Binding files (`artifact` is `null` in catalog)
 
-### 16.4 Generic Adapter Behavior
+### 17.4 Generic Adapter Behavior
 
 ```
 When generic adapter is selected:
@@ -701,17 +727,28 @@ When generic adapter is selected:
   2. Copy PCM.md, PWF.md, CONFORMANCE.md from package
   3. Create pcm/workstreams/ directory
   4. Create pcm/.pcm-manifest.json
-  5. Do NOT create adapter-specific files
+  5. Do NOT create adapter-specific files (artifact is null)
   6. Print: "Generic adapter applied. Configure your tools manually."
 ```
 
-The generic adapter is always available and always safe. It is the safe fallback for any environment.
+The generic adapter is always available, always trusted, and always safe. It is the safe fallback for any environment. It requires no external trust evaluation, no network access, and no additional dependencies.
+
+### 17.5 Generic Adapter Guarantees
+
+| Guarantee | Value |
+|-----------|-------|
+| Always available | Yes — bundled in package, no external dependency |
+| Always trusted | Yes — package integrity is sufficient |
+| Always works offline | Yes — no network required |
+| Never requires trust policy | Yes — built-in trust |
+| Provides binding files | No — artifact is null |
+| Provides core artifacts | Yes — same as specialized adapters |
 
 ---
 
-## 17. Deterministic Selection Algorithm
+## 18. Deterministic Selection Algorithm
 
-### 17.1 Algorithm
+### 18.1 Algorithm
 
 Given: Catalog C, Environment E, Trust Policy P
 
@@ -736,11 +773,11 @@ function selectAdapter(C, E, P):
   return trusted[0]
 ```
 
-### 17.2 Determinism Guarantee
+### 18.2 Determinism Guarantee
 
 Given the same catalog C, environment E, and trust policy P, the algorithm ALWAYS returns the same adapter. There is no randomness, no heuristic, no fuzzy matching.
 
-### 17.3 Selection Table
+### 18.3 Selection Table
 
 ```
 ┌─────────────┬─────────────┬──────────────┬────────────────┐
@@ -758,49 +795,111 @@ Given the same catalog C, environment E, and trust policy P, the algorithm ALWAY
 
 ---
 
-## 18. Adapter Trust Model (R1 Finding #6)
+## 19. Artifact Resolution
 
-### 18.1 Trust States
+### 19.1 What Artifact Resolution Does
 
-An adapter progresses through four trust states:
+After selection, the resolution layer maps the selected adapter catalog entry to actual file content. For MVP, this means reading bundled files from the npm package.
+
+### 19.2 Resolution Process
+
+```
+function resolveArtifact(C, adapterId):
+  entry = C.adapters.find(a => a.id === adapterId)
+
+  if entry.artifact is null:
+    return null  // generic adapter, no binding files
+
+  artifactPath = join(packageRoot, entry.artifact)
+  files = readDir(artifactPath)
+
+  return files.map(f => ({
+    path: targetPath(f),  // mapped to target repo layout
+    content: readFile(join(artifactPath, f))
+  }))
+```
+
+### 19.3 Resolution Rules
+
+1. If `artifact` is `null` → no binding files (generic adapter)
+2. If `artifact` is a path → read all files from that path in the package
+3. File paths are mapped from package layout to target repo layout
+4. Resolution is deterministic — same catalog entry → same files
+5. Resolution is offline — no network fetch required
+
+### 19.4 Resolution ≠ Trust
+
+Resolution maps a catalog entry to files. It does NOT evaluate trust. Trust is evaluated before resolution in the lifecycle.
+
+---
+
+## 20. Adapter Trust Model
+
+### 20.1 Trust States
+
+An adapter progresses through six trust states:
 
 | State | Meaning | Can Be Used? |
 |-------|---------|--------------|
 | **DISCOVERABLE** | Adapter can be found in catalog | No — listed but not yet evaluated |
 | **DECLARED COMPATIBLE** | Adapter metadata says it supports the environment | No — declared but not yet trusted |
-| **TRUSTED** | Trust policy permits execution/use | Yes — can be selected |
+| **TRUST EVALUATED** | Trust policy has been consulted | Depends on policy result |
+| **ARTIFACT RESOLVED** | Bundled files have been located in package | No — resolved but not yet installed |
+| **TRUSTED** | Trust policy permits execution/use | Yes — can be selected and installed |
 | **INSTALLED** | Adapter is actually present in target repo | Yes — already in place |
 
-### 18.2 Trust Transitions
+### 20.2 Trust Lifecycle
 
 ```
-DISCOVERABLE ──[catalog match]──► DECLARED COMPATIBLE
-DECLARED COMPATIBLE ──[policy allows]──► TRUSTED
-TRUSTED ──[npx pcm init selects]──► INSTALLED
+DISCOVERABLE
+  │  catalog lists adapter
+  ▼
+DECLARED COMPATIBLE
+  │  platform/shell match confirmed
+  ▼
+TRUST EVALUATED
+  │  trust policy consulted
+  │  if not trusted → fall back to generic
+  ▼
+ARTIFACT RESOLVED
+  │  bundled files located in package
+  │  if artifact is null → generic (no binding)
+  ▼
+TRUSTED
+  │  policy permits, artifact available
+  ▼
+INSTALLED
+     files written to target repository
 ```
 
-### 18.3 Adapter Origin
+### 20.3 Adapter Origin
+
+For MVP, all adapters in the catalog are `built-in` — their artifacts are bundled in the PCM npm package.
 
 | Origin | Meaning | Trust Basis |
 |--------|---------|-------------|
-| **built-in** | Shipped with PCM distribution (e.g., generic) | Package integrity |
-| **independently-distributed** | Separate repository/package (e.g., opencode adapter) | Catalog entry + trust policy |
+| **built-in** | Shipped with PCM distribution | Package integrity |
+
+Future versions may add:
+| Origin | Meaning | Trust Basis |
+|--------|---------|-------------|
+| **independently-distributed** | Separate package/fetch required | Catalog entry + trust policy + integrity verification |
 | **repo-local** | Adapter files already in target repository | Project governance |
 
-### 18.4 Trust Rules
+### 20.4 Trust Rules
 
 1. Catalog entry ≠ trust. A catalog entry makes an adapter discoverable and declares compatibility. It does NOT make the adapter trusted.
 2. Trust is determined by policy, not by catalog. The trust policy is a project-level governance decision.
 3. The generic adapter is always trusted. It is built-in and requires no external trust evaluation.
-4. Independently-distributed adapters require explicit trust. The trust policy must list which adapters are trusted.
+4. For MVP, all bundled adapters share package integrity as trust basis. If the package is trusted, its bundled adapters are trusted.
 5. Repo-local adapters are trusted by project governance. If the project has adapter files, the project has implicitly trusted them.
 
-### 18.5 Trust Policy (Conceptual)
+### 20.5 Trust Policy (Conceptual)
 
 ```json
 {
   "trustedAdapters": ["opencode", "copilot", "generic"],
-  "trustedOrigins": ["built-in", "independently-distributed"],
+  "trustedOrigins": ["built-in"],
   "requireExplicitTrust": true
 }
 ```
@@ -809,9 +908,9 @@ The trust policy is a project-level concern, not a distribution mechanism concer
 
 ---
 
-## 19. `npx pcm init` Semantics (R1 Finding #7)
+## 21. `npx pcm init` Semantics
 
-### 19.1 What Bootstrap Produces
+### 21.1 What Bootstrap Produces
 
 A valid bootstrap produces three layers:
 
@@ -827,18 +926,19 @@ CORE + BINDING + OPTIONAL TOOLING
 **BINDING:**
 - Adapter-specific files (e.g., `.opencode/skills/pcm-pwf/SKILL.md`)
 - Tool integration rules (e.g., `.opencode/rules/pcm-core.mdc`)
+- For generic adapter: no binding files
 
 **OPTIONAL TOOLING:**
 - `pcm/.pcm-manifest.json` — Installation manifest
 
-### 19.2 What Bootstrap Does NOT Produce
+### 21.2 What Bootstrap Does NOT Produce
 
 - Governance content (`docs/gates/*`, tasks, handoffs, proposals)
 - Manufactured canonical history
 - New commands beyond `npx pcm init`
 - New tools beyond what the adapter provides
 
-### 19.3 Valid PCM-Enabled State
+### 21.3 Valid PCM-Enabled State
 
 A repository is PCM-enabled if and only if:
 
@@ -850,9 +950,9 @@ A repository with only adapter files but no core artifacts is NOT PCM-enabled.
 
 ---
 
-## 20. Target-State Ownership (R1 Finding #8)
+## 22. Target-State Ownership
 
-### 20.1 Distributed Core
+### 22.1 Distributed Core
 
 | Property | Value |
 |----------|-------|
@@ -862,7 +962,7 @@ A repository with only adapter files but no core artifacts is NOT PCM-enabled.
 | Can project modify? | No (revert on update) |
 | Contains | PCM/PWF specification artifacts |
 
-### 20.2 Binding / Adapter State
+### 22.2 Binding / Adapter State
 
 | Property | Value |
 |----------|-------|
@@ -872,7 +972,7 @@ A repository with only adapter files but no core artifacts is NOT PCM-enabled.
 | Can project modify? | Yes (but may break adapter) |
 | Contains | Tool-specific integration files |
 
-### 20.3 Tooling State
+### 22.3 Tooling State
 
 | Property | Value |
 |----------|-------|
@@ -882,7 +982,7 @@ A repository with only adapter files but no core artifacts is NOT PCM-enabled.
 | Can project modify? | No (regenerated on update) |
 | Contains | Manifest, generated configuration |
 
-### 20.4 Governance State (CRITICAL)
+### 22.4 Governance State (CRITICAL)
 
 | Property | Value |
 |----------|-------|
@@ -901,16 +1001,17 @@ A repository with only adapter files but no core artifacts is NOT PCM-enabled.
 
 ---
 
-## 21. Update Semantics (R1 Finding #9)
+## 23. Update Semantics
 
-### 21.1 What `pcm update` May Update
+### 23.1 What `pcm update` May Update
 
 `pcm update` may update only:
 
 1. **Package-managed core artifacts** — `pcm/docs/PCM.md`, `pcm/docs/PWF.md`, `pcm/docs/CONFORMANCE.md`
 2. **Generated tooling** — `pcm/.pcm-manifest.json`
+3. **Bundled adapter artifacts** — Adapter files from new package version (if adapter version changed)
 
-### 21.2 What `pcm update` MUST NOT Silently Overwrite
+### 23.2 What `pcm update` MUST NOT Silently Overwrite
 
 `pcm update` MUST NOT silently overwrite:
 
@@ -921,7 +1022,7 @@ A repository with only adapter files but no core artifacts is NOT PCM-enabled.
 5. **User-owned adapter configuration** — Adapter files modified by the user
 6. **Project-owned governance content** — Any content owned by the project
 
-### 21.3 Conflict Detection
+### 23.3 Conflict Detection
 
 If package-managed files were locally modified, `pcm update` must:
 
@@ -930,13 +1031,14 @@ If package-managed files were locally modified, `pcm update` must:
 3. **NOT silently destroy** user changes
 4. **Provide** resolution options (e.g., merge, overwrite, skip)
 
-### 21.4 Update Rules Summary
+### 23.4 Update Rules Summary
 
 ```
 pcm update MAY:
   ✓ Update pcm/docs/PCM.md (if package-managed)
   ✓ Update pcm/docs/PWF.md (if package-managed)
   ✓ Update pcm/docs/CONFORMANCE.md (if package-managed)
+  ✓ Update bundled adapter artifacts (if package version changed)
   ✓ Regenerate pcm/.pcm-manifest.json
 
 pcm update MUST NOT:
@@ -949,9 +1051,9 @@ pcm update MUST NOT:
 
 ---
 
-## 22. Unknown-Repository Lifecycle (R1 Finding #10)
+## 24. Unknown-Repository Lifecycle
 
-### 22.1 Lifecycle Steps
+### 24.1 Lifecycle Steps
 
 ```
 OBSERVE
@@ -970,9 +1072,9 @@ NO TRUSTED SPECIALIZED ADAPTER?
   │  Fall back to generic adapter
   │  Generic is always trusted
   ▼
-GENERIC ADAPTER
-  │  Select generic adapter
-  │  Always available, always safe
+RESOLVE ARTIFACT
+  │  Read bundled files from package
+  │  If artifact is null → generic (no binding)
   ▼
 INSTALL CORE
   │  Write pcm/docs/PCM.md
@@ -988,16 +1090,16 @@ VALID PCM-ENABLED REPOSITORY
      Ready for governance
 ```
 
-### 22.2 Environment Detection Must Never Imply Adapter Availability
+### 24.2 Environment Detection Must Never Imply Adapter Availability
 
 Language/platform/tool detection is observation only. The following is NOT a valid inference:
 
 ```
 INVALID: "OpenCode is installed → use OpenCode adapter"
-VALID:   "OpenCode is installed → check catalog → check trust → select adapter"
+VALID:   "OpenCode is installed → check catalog → check trust → resolve artifact → select adapter"
 ```
 
-### 22.3 Unknown Repository Example
+### 24.3 Unknown Repository Example
 
 Machine C encounters repo Z (never seen before):
 
@@ -1018,37 +1120,43 @@ $ npx pcm init repo-Z
    - Trust state: TRUSTED
 5. Selecting adapter:
    - Deterministic selection: opencode (tested=true, priority=1)
-6. Idempotency check:
+6. Resolving artifact:
+   - Catalog entry artifact: "adapters/opencode"
+   - Reading bundled files from package:
+     - adapters/opencode/SKILL.md
+     - adapters/opencode/pcm-core.mdc
+7. Idempotency check:
    - pcm/.pcm-manifest.json: NOT FOUND
    - Bootstrap required: YES
-7. Installing core:
+8. Installing core:
    - pcm/docs/PCM.md (package-managed)
    - pcm/docs/PWF.md (package-managed)
    - pcm/docs/CONFORMANCE.md (package-managed)
-8. Binding:
-   - .opencode/skills/pcm-pwf/SKILL.md (adapter)
-   - .opencode/rules/pcm-core.mdc (adapter)
-9. Creating manifest:
-   - pcm/.pcm-manifest.json
-10. Done. Adapter: opencode. Files written: 6.
+9. Binding:
+   - .opencode/skills/pcm-pwf/SKILL.md (from bundled artifact)
+   - .opencode/rules/pcm-core.mdc (from bundled artifact)
+10. Creating manifest:
+    - pcm/.pcm-manifest.json
+11. Done. Adapter: opencode. Files written: 6.
 ```
 
 ---
 
-## 23. Identity / Manifest (R1 Finding #12)
+## 25. Identity / Manifest
 
-### 23.1 Manifest Purpose
+### 25.1 Manifest Purpose
 
 The manifest (`pcm/.pcm-manifest.json`) is one authoritative installed-state record. It answers:
 
 - What PCM version is installed
 - What distribution version installed it
 - What binding/adapter is selected
-- What adapter origin (built-in, independently-distributed, repo-local)
+- What adapter version is installed
+- What adapter origin (built-in)
 - What files were written by the distribution mechanism
 - What initialization state (bootstrapped, partial, invalid)
 
-### 23.2 Manifest Structure
+### 25.2 Manifest Structure
 
 ```json
 {
@@ -1057,7 +1165,8 @@ The manifest (`pcm/.pcm-manifest.json`) is one authoritative installed-state rec
   "initializedAt": "2026-09-07T00:00:00Z",
   "adapter": {
     "id": "opencode",
-    "origin": "independently-distributed",
+    "origin": "built-in",
+    "artifactPath": "adapters/opencode",
     "version": "1.0.0"
   },
   "core": {
@@ -1081,20 +1190,21 @@ The manifest (`pcm/.pcm-manifest.json`) is one authoritative installed-state rec
 }
 ```
 
-### 23.3 Manifest Rules
+### 25.3 Manifest Rules
 
 1. Manifest is created by `npx pcm init`
 2. Manifest is updated by `pcm update`
 3. Manifest is NOT project-owned governance content
 4. Manifest is inspectable locally (no external dependency)
 5. Manifest records file provenance for distribution-managed files
-6. Manifest does NOT record governance content (`docs/gates/*`, tasks, handoffs)
+6. Manifest records adapter origin and artifact path
+7. Manifest does NOT record governance content (`docs/gates/*`, tasks, handoffs)
 
 ---
 
-## 24. Gate State Out of Package Distribution (R1 Finding #13)
+## 26. Gate State Out of Package Distribution
 
-### 24.1 What Distribution Does NOT Package
+### 26.1 What Distribution Does NOT Package
 
 Distribution mechanism does NOT package or synthesize:
 
@@ -1104,22 +1214,22 @@ Distribution mechanism does NOT package or synthesize:
 - Canonical decisions — These are project governance content
 - Manufactured governance history — Distribution does not create fake history
 
-### 24.2 What Distribution DOES Package
+### 26.2 What Distribution DOES Package
 
 Distribution packages only:
 
 - PCM/PWF specification artifacts (core semantics)
 - Adapter catalog (discovery)
-- Adapter templates (binding)
+- Adapter artifacts (bundled binding files)
 - Selection logic (deterministic)
 - Manifest (installed state)
 
-### 24.3 Separation Rule
+### 26.3 Separation Rule
 
 ```
 Distribution installs:
   ✓ Framework (PCM/PWF specs)
-  ✓ Binding (adapter files)
+  ✓ Binding (adapter files from bundled artifacts)
   ✓ Optional tooling (manifest)
 
 Distribution does NOT install:
@@ -1132,9 +1242,9 @@ Distribution does NOT install:
 
 ---
 
-## 25. Preserve Core/Adapter Boundary (R1 Finding #14)
+## 27. Preserve Core/Adapter Boundary
 
-### 25.1 What Adapter MUST NOT Do
+### 27.1 What Adapter MUST NOT Do
 
 Based on `docs/ADAPTER-MODEL.md`, an adapter MUST NOT:
 
@@ -1147,7 +1257,7 @@ Based on `docs/ADAPTER-MODEL.md`, an adapter MUST NOT:
 - Become authority over PCM semantics
 - Override GATE decisions
 
-### 25.2 What Adapter MAY Do
+### 27.2 What Adapter MAY Do
 
 An adapter MAY:
 
@@ -1158,7 +1268,7 @@ An adapter MAY:
 - Optimize for specific contexts
 - Provide tool-specific commands and workflows
 
-### 25.3 Boundary Enforcement
+### 27.3 Boundary Enforcement
 
 The distribution mechanism enforces the boundary by:
 
@@ -1169,49 +1279,52 @@ The distribution mechanism enforces the boundary by:
 
 ---
 
-## 26. Offline Considerations
+## 28. Offline Considerations
 
-### 26.1 What Requires Network
+### 28.1 What Requires Network
 
 1. `npx` itself (first run, downloads PCM package)
 2. Package installation (first run)
 
-### 26.2 What Does NOT Require Network
+### 28.2 What Does NOT Require Network
 
 1. `npx pcm init` (after package is installed)
 2. Environment detection
 3. Adapter selection
-4. Writing adapter files
-5. Manifest creation
+4. Artifact resolution (bundled in package)
+5. Writing adapter files
+6. Manifest creation
 
-### 26.3 Offline Mode
+### 28.3 Offline Mode
 
 When offline (after package installation):
 1. Catalog is read from package (local)
 2. Environment detection proceeds normally
 3. Adapter selection proceeds normally
-4. Writing adapter files proceeds normally
-5. Result: same as online mode (deterministic)
+4. Artifact resolution reads bundled files (local)
+5. Writing adapter files proceeds normally
+6. Result: same as online mode (deterministic)
 
 ---
 
-## 27. Portability
+## 29. Portability
 
-### 27.1 What Is Portable
+### 29.1 What Is Portable
 
 1. Catalog format (JSON, standard)
 2. Adapter file format (markdown, standard)
 3. CLI interface (`npx pcm init`)
 4. Selection algorithm (deterministic, no platform-specific logic)
 5. Manifest format (JSON, standard)
+6. Artifact resolution (bundled, no platform-specific logic)
 
-### 27.2 What Is NOT Portable
+### 29.2 What Is NOT Portable
 
 1. Adapter-specific content (OpenCode-specific, Copilot-specific)
 2. Platform-specific paths (windows vs linux)
 3. Shell-specific commands (powershell vs bash)
 
-### 27.3 Portability Guarantee
+### 29.3 Portability Guarantee
 
 `npx pcm init` produces the same result on:
 - Windows + PowerShell
@@ -1222,9 +1335,9 @@ The adapter selection may differ, but the process is identical.
 
 ---
 
-## 28. Failure Modes
+## 30. Failure Modes
 
-### 28.1 Failure Mode Table
+### 30.1 Failure Mode Table
 
 ```
 ┌─────────────────────┬──────────────────┬───────────────────────────────────┐
@@ -1237,11 +1350,12 @@ The adapter selection may differ, but the process is identical.
 │ Catalog empty       │ Generic fallback │ Use generic adapter               │
 │ Package missing     │ Fatal error      │ npm install pcm                   │
 │ Trust policy missing│ Generic fallback │ Use generic adapter               │
+│ Artifact missing    │ Generic fallback │ Use generic adapter               │
 │ Local modification  │ Conflict report  │ pcm update reports conflict       │
 └─────────────────────┴──────────────────┴───────────────────────────────────┘
 ```
 
-### 28.2 Error Reporting
+### 30.2 Error Reporting
 
 `npx pcm init` reports errors as:
 1. Clear error message
@@ -1250,17 +1364,18 @@ The adapter selection may differ, but the process is identical.
 
 ---
 
-## 29. Future Extension Points
+## 31. Future Extension Points
 
-### 29.1 What May Change
+### 31.1 What May Change
 
-1. **New adapters** — Add to catalog
+1. **New adapters** — Add to catalog with bundled artifacts
 2. **New platforms** — Update adapter platform list
 3. **New shells** — Update adapter shell list
 4. **New tools** — Create new adapter
 5. **New trust policies** — Extend trust evaluation
+6. **Independent distribution** — Add `artifactSource` field for Model B
 
-### 29.2 What Will NOT Change
+### 31.2 What Will NOT Change
 
 1. **Catalog format** — JSON is stable
 2. **Selection algorithm** — Deterministic is stable
@@ -1268,18 +1383,19 @@ The adapter selection may differ, but the process is identical.
 4. **Generic adapter** — Always available as fallback
 5. **Three-source-of-truth separation** — Semantic, catalog, installed state
 
-### 29.3 Extension Process
+### 31.3 Extension Process
 
 To add a new adapter:
-1. Create adapter repository
-2. Add entry to package-bundled catalog
-3. Test on target platforms
-4. Update catalog with `tested: true`
-5. Update trust policy to include new adapter
+1. Create adapter files
+2. Bundle in package under `adapters/<adapter-id>/`
+3. Add entry to package-bundled catalog
+4. Test on target platforms
+5. Update catalog with `tested: true`
+6. Update trust policy to include new adapter
 
 ---
 
-## 30. Open Questions
+## 32. Open Questions
 
 1. Should the catalog support version pinning? (Currently: no)
 2. Should `npx pcm init` support custom catalogs? (Currently: no)
@@ -1288,10 +1404,11 @@ To add a new adapter:
 5. Should the trust policy be per-repository or global? (Currently: per-repository)
 6. Should the manifest include file checksums? (Currently: no)
 7. Should `pcm update` support selective updates? (Currently: all-or-nothing)
+8. Should independent distribution (Model B) be deferred to post-MVP? (Currently: yes)
 
 ---
 
-## 31. Implementation Readiness (R1 Finding #17)
+## 33. Implementation Readiness
 
 ### Readiness Checklist
 
@@ -1306,6 +1423,9 @@ To add a new adapter:
 | Can implementation bootstrap an unknown repo using generic fallback? | **YES** — Generic adapter is always trusted, always available |
 | Can implementation reproduce installed state deterministically? | **YES** — Same package version + same catalog + same env = same result |
 | Can implementation identify the installed distribution/binding version? | **YES** — Manifest records `distributionVersion`, `adapter.id`, `adapter.version` |
+| Can implementation determine exact adapter artifact location? | **YES** — `artifact` field in catalog points to bundled path |
+| Can implementation resolve adapter artifacts without network? | **YES** — All artifacts bundled in package (MVP) |
+| Can implementation distinguish adapter definition from artifact from distribution from trust from binding? | **YES** — Five concepts explicitly separated (Section 6) |
 
 ### Readiness Result
 
@@ -1378,11 +1498,12 @@ The architecture is **IMPLEMENTATION-READY**.
 │ Catalog empty       │ Generic fallback │ Use generic adapter               │
 │ Package missing     │ Fatal error      │ npm install pcm                   │
 │ Trust policy missing│ Generic fallback │ Use generic adapter               │
+│ Artifact missing    │ Generic fallback │ Use generic adapter               │
 │ Local modification  │ Conflict report  │ pcm update reports conflict       │
 └─────────────────────┴──────────────────┴───────────────────────────────────┘
 ```
 
-## Appendix E: Trust State Diagram
+## Appendix E: Trust Lifecycle Diagram
 
 ```
 ┌─────────────────┐
@@ -1393,16 +1514,49 @@ The architecture is **IMPLEMENTATION-READY**.
 ┌─────────────────────┐
 │ DECLARED COMPATIBLE │  Metadata says env matches
 └────────┬────────────┘
-         │ policy allows
+         │ policy consulted
          ▼
 ┌─────────────────┐
-│    TRUSTED      │  Policy permits use
+│ TRUST EVALUATED │  Policy result known
+└────────┬────────┘
+         │ if trusted
+         ▼
+┌─────────────────────┐
+│ ARTIFACT RESOLVED   │  Bundled files located in package
+└────────┬────────────┘
+         │ files available
+         ▼
+┌─────────────────┐
+│    TRUSTED      │  Policy permits, artifact ready
 └────────┬────────┘
          │ npx pcm init selects
          ▼
 ┌─────────────────┐
 │    INSTALLED    │  Present in target repo
 └─────────────────┘
+```
+
+## Appendix F: Concept Separation Table
+
+```
+┌──────────────────────┬───────────────────────────────────────────────┐
+│ Concept              │ Definition                                    │
+├──────────────────────┼───────────────────────────────────────────────┤
+│ CATALOG ENTRY        │ Metadata record in adapter catalog           │
+│                      │ (discovery only)                             │
+├──────────────────────┼───────────────────────────────────────────────┤
+│ ADAPTER ARTIFACT     │ Actual files that constitute the adapter     │
+│                      │ binding (implementation files)               │
+├──────────────────────┼───────────────────────────────────────────────┤
+│ ADAPTER DISTRIBUTION │ Mechanism by which artifacts reach           │
+│ SOURCE               │ npx pcm init (MVP: bundled in package)       │
+├──────────────────────┼───────────────────────────────────────────────┤
+│ TARGET BINDING       │ Adapter artifacts as they exist in the       │
+│                      │ target repository after installation         │
+├──────────────────────┼───────────────────────────────────────────────┤
+│ TRUST EVALUATION     │ Policy decision about whether an adapter     │
+│                      │ may be used (separate from discovery)        │
+└──────────────────────┴───────────────────────────────────────────────┘
 ```
 
 ---
