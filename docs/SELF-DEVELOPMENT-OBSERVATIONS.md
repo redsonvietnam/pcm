@@ -1,6 +1,6 @@
 # Self-Development Observation Record
 
-**Workstream:** PCM-BOOTSTRAP-01 + PCM-MASTER-01 + PCM-MASTER-02  
+**Workstream:** PCM-BOOTSTRAP-01 + PCM-MASTER-01 + PCM-MASTER-02 + PCM-VALIDATION-01  
 **Date:** 2026-09-07  
 **Status:** Active  
 
@@ -291,3 +291,59 @@ The framework-building-itself exercise revealed that:
 15. Portability test confirmed tool independence
 
 The framework is CANONICAL and ready for external implementation validation.
+
+## 11. VALIDATION-01 Observations
+
+### 11.1 What PCM Handled Well
+
+1. **Scale Independence:** PCM primitives worked for both a production queue management system (Bamso) and a personal ML pipeline (Supervision).
+2. **Domain Independence:** The non-code procurement scenario confirmed PCM semantics are not software-specific.
+3. **Invariant Robustness:** All 6 invariants held in both implementations without contradiction.
+4. **Authority Model:** Single-developer authority was valid and functional.
+5. **State Distinction:** Canonical vs proposed state remained clear across different git workflows.
+
+### 11.2 What PWF Handled Well
+
+1. **Handoff Semantics:** Bamso's HANDOFF.md was a strong implementation of PWF handoff.
+2. **Evidence Requirements:** Both projects provided observable evidence of correct operation.
+3. **Gate Integration:** Implicit gates (merge criteria, test pass) worked for single-developer projects.
+
+### 11.3 What Adapters Had to Absorb
+
+1. **Formality Level:** Bamso needed more formality than Supervision — adapter absorbed this difference.
+2. **Task State Tracking:** Supervision didn't track tasks — adapter accepted this as project-appropriate.
+3. **Conflict Resolution:** Both projects used ad-hoc conflict resolution — adapter accepted this for single-developer projects.
+4. **Checkpoint Mechanism:** Neither project had checkpoints — adapter accepted this for simple projects.
+
+### 11.4 Where the Framework Created Friction
+
+1. **No Formal Authority Gate:** Neither project had formal gate records — but this is a PWF recommendation, not a PCM requirement.
+2. **No Formal Task State Machine:** Supervision didn't track tasks — but this is a PWF recommendation, not a PCM requirement.
+3. **No Checkpoint Mechanism:** Neither project had checkpoints — but this is a PWF recommendation, not a PCM requirement.
+
+**All friction was resolved at the adapter or PWF policy layer. No genuine PCM semantic gaps were discovered.**
+
+### 11.5 Where the Conformance Model Was Insufficient
+
+1. **Single-Developer Projects:** The conformance model assumed multi-party workflows. Single-developer projects needed lighter-weight criteria.
+2. **Minimal Tools:** The conformance model assumed formal task tracking. Minimal tools needed simpler criteria.
+
+**These are adapter-level concerns, not framework gaps.**
+
+### 11.6 Where External Implementations Disagreed with Assumptions
+
+1. **Assumption: Formal Authority Gate required.** Reality: Implicit gates work for single-developer projects.
+2. **Assumption: Formal task state machine required.** Reality: Minimal tools can function without it.
+3. **Assumption: Checkpoints required.** Reality: Simple projects can restart from beginning.
+
+**These are adapter-level adaptations, not framework contradictions.**
+
+### 11.7 Evidence Summary
+
+| Implementation | Domain | Language | PCM Invariants | PWF Behaviors | Assessment |
+|---------------|--------|----------|----------------|---------------|------------|
+| Bamso | Queue Management | TypeScript | All 6 PASS | Strong | PASS-WITH-ADAPTER |
+| Supervision | ML Pipeline | Python | All 6 PASS | Minimal | PASS-WITH-ADAPTER |
+| Procurement | Office Operations | N/A | All 6 PASS | N/A | PASS |
+
+**Conclusion:** PCM/PWF v1.0 is externally validated by independent implementations in materially different domains without requiring framework changes.
