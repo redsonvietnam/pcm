@@ -188,12 +188,12 @@ Escalation transfers authority or decision-making to a higher-level authority sc
 ## 11. Single-Actor Validity
 
 PWF functions with a single actor. When only one actor exists:
-- That actor may hold multiple roles (PROPOSER + OPERATOR)
-- AUTHORITY must still be explicit (even if self-delegated through a defined mechanism)
-- GATE semantics still apply (even if the same actor proposes and approves, the actions must be distinct and traceable)
+- That actor may hold multiple execution roles (PROPOSER + OPERATOR)
+- AUTHORITY over canonical outcomes must still derive from an explicit governance mechanism, not from being the sole actor
+- GATE semantics still apply: proposing and approving must be distinct, traceable actions even when performed by the same actor
 - Handoffs may be to self (for session reconstruction)
 
-The protocol does not require multiple actors to be meaningful.
+The protocol does not require multiple actors to be meaningful. However, execution capability alone does not create canonical decision authority, regardless of how many actors exist.
 
 ## 12. Versioning
 

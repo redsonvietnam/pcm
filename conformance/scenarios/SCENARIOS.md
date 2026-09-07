@@ -69,9 +69,9 @@ An implementation may use any technology to verify these scenarios. The scenario
 
 **PCM-10: Handoff Reconstruction**
 - Setup: HANDOFF exists for work in progress
-- Test: Different actor can continue work from HANDOFF alone
-- Pass: Work reconstructable from HANDOFF
-- Fail: HANDOFF requires session memory
+- Test: Different actor can continue work using HANDOFF and referenced canonical state
+- Pass: Work reconstructable from HANDOFF + canonical state
+- Fail: HANDOFF requires session memory or canonical state is not resolvable
 
 ### PWF Scenarios
 

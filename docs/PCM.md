@@ -79,9 +79,11 @@ The role that monitors and reports on work state without modification power.
 The following invariants are absolute. Each prevents a specific class of failure.
 
 ### 7.1 Agent ≠ Authority
-**Prevents:** Execution actors assuming decision power over canonical state without explicit delegation.
+**Prevents:** Execution capability creating canonical decision authority.
 
-An actor that executes work cannot simultaneously hold AUTHORITY over that work's canonical outcome. Authority must be delegated from a separate source or explicitly granted through a defined mechanism.
+An actor that executes work does not thereby obtain AUTHORITY over that work's canonical outcome. Authority must be delegated from a separate source or explicitly granted through a defined governance mechanism.
+
+A single actor may hold multiple execution roles (e.g., PROPOSER + OPERATOR). However, execution capability alone does not create canonical decision authority. If a single actor operates in an AUTHORITY role, that authority must derive from an explicit governance mechanism (e.g., external delegation, organizational policy, or a defined self-governance protocol) — not from being the sole actor.
 
 ### 7.2 Implementation ≠ Approval
 **Prevents:** Executed work being treated as approved work.
@@ -144,7 +146,9 @@ A HANDOFF must include:
 - Evidence of progress
 - Next action recommendation
 
-A HANDOFF is reconstructable: a different actor should be able to continue work from the HANDOFF alone, without requiring memory of previous sessions.
+A HANDOFF must contain sufficient information to reconstruct the relevant work context together with whatever canonical state is referenced. The canonical state reference must be resolvable through the applicable persistence mechanism. A HANDOFF does not need to duplicate the entire canonical state.
+
+The principle remains: context memory from the previous session must not be required. A different actor should be able to continue work using the HANDOFF and the referenced canonical state, without needing memory of previous sessions.
 
 HANDOFFs do not transfer AUTHORITY automatically. Authority transfer requires explicit delegation within the HANDOFF.
 
@@ -184,7 +188,9 @@ When authority is ambiguous or contested:
 
 ## 12. Evidence Provenance
 
-Evidence produced during work has provenance. PCM distinguishes:
+Evidence produced during work has provenance. This is a semantic requirement that supports informed decision-making, not an invariant.
+
+PCM distinguishes three categories of evidence provenance:
 
 ### 12.1 Self-Reported
 Evidence produced by the actor performing the work. Valid for progress tracking but may require independent verification for GATE decisions.

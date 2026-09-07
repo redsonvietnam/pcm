@@ -51,6 +51,7 @@ A team is building a feature for a web application.
 - Design draft is not approved design (Proposed ≠ Canonical)
 - Local environment is not production (Context ≠ Canonical)
 - Using Git does not change protocol rules (Protocol ≠ Tooling)
+- Two developers submitting conflicting designs cannot silently resolve (Concurrent Conflict ≠ Silent Resolution)
 
 ## Domain B: Non-Software Work — Office Move Planning
 
@@ -96,6 +97,7 @@ A company is planning to move to a new office.
 - Draft floor plan is not approved floor plan (Proposed ≠ Canonical)
 - Site visit notes are not official decisions (Context ≠ Canonical)
 - Using spreadsheets does not change protocol rules (Protocol ≠ Tooling)
+- Two managers submitting conflicting floor plans cannot silently resolve (Concurrent Conflict ≠ Silent Resolution)
 
 ## Cross-Domain Analysis
 
@@ -109,7 +111,7 @@ A company is planning to move to a new office.
 
 2. **Roles:** AUTHORITY, PROPOSER, OPERATOR, OBSERVER work in both domains. Role holders differ (CEO vs product owner) but role semantics are identical.
 
-3. **Invariants:** All five invariants hold in both domains. No domain-specific invariant needed.
+3. **Invariants:** All six invariants hold in both domains. No domain-specific invariant needed.
 
 4. **State Model:** Canonical, Proposed, Execution, Context states work in both domains. State storage differs (Git vs spreadsheets) but state semantics are identical.
 
@@ -133,7 +135,7 @@ PCM/PWF semantics are domain-agnostic. The protocol governs relationships and st
 
 ## Implications
 
-1. **PCM does not need domain-specific extensions.** The four primitives and five invariants are sufficient.
+1. **PCM does not need domain-specific extensions.** The four primitives and six invariants are sufficient.
 
 2. **PWF does not need domain-specific mandatory behaviors.** The mandatory behaviors (task record, lifecycle, handoff, GATE, traceability) work across domains.
 

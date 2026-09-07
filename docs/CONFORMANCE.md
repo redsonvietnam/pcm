@@ -25,9 +25,9 @@ For each criterion, the test describes what must be observable. The counterexamp
 
 ### 3.1 Authority Integrity
 
-**Test:** An actor that executes work does not simultaneously hold AUTHORITY over that work's canonical outcome without explicit delegation.
+**Test:** Execution capability does not create canonical decision authority. An actor that executes work does not thereby obtain AUTHORITY over that work's canonical outcome.
 
-**Counterexample:** If an implementation allows an operator to mark their own work as canonical without a separate AUTHORITY action, it does not conform.
+**Counterexample:** If an implementation allows an operator to mark their own work as canonical solely because they are the sole actor or because they performed the execution, it does not conform. AUTHORITY must derive from an explicit governance mechanism separate from execution capability.
 
 ### 3.2 Implementation-Approval Separation
 
@@ -79,9 +79,9 @@ For each criterion, the test describes what must be observable. The counterexamp
 
 ### 3.10 Handoff Reconstruction
 
-**Test:** A HANDOFF contains enough information for a different actor to continue work. Context is reconstructable from the HANDOFF alone.
+**Test:** A HANDOFF contains sufficient information to reconstruct the relevant work context together with the referenced canonical state. The canonical reference is resolvable through the applicable persistence mechanism. Context memory from previous sessions is not required.
 
-**Counterexample:** If a HANDOFF requires memory of previous sessions to be useful, it does not conform.
+**Counterexample:** If a HANDOFF requires memory of previous sessions to be useful, or if the canonical state reference is not resolvable, it does not conform.
 
 ## 4. PWF Conformance Criteria
 

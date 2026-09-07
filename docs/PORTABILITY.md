@@ -153,7 +153,7 @@ For each technology, ask:
 ### TRUE CORE (survives all technology replacement)
 - WORKSTREAM, TASK, HANDOFF, GATE primitives
 - AUTHORITY, PROPOSER, OPERATOR, OBSERVER roles
-- Five invariants
+- Six invariants
 - Concurrent conflict resolution
 - Evidence provenance
 - State distinctions (Canonical, Proposed, Execution, Context)
