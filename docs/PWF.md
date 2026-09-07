@@ -213,4 +213,4 @@ PWF versions follow semantic versioning:
 
 ## 13. Authority
 
-This specification is PROPOSED and pending external Authority Gate review. It does not represent canonical state until approved through proper GATE procedures.
+This specification is CANONICAL as part of PCM/PWF v1.0 baseline approved by PCM-GATE-01. Future semantic changes are subject to Authority Gate.
