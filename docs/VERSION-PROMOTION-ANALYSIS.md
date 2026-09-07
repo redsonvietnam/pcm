@@ -197,7 +197,8 @@ R1 must decide:
 **CURRENT STATUS (2026-09-07):**
 
 PCM-GATE-02A = PASS. The Stability Graduation policy clarification is now canonical.
+PCM-GATE-02 = PASS. PCM/PWF v1.0 is now canonical.
 
-The v0.2 → v1.0 promotion is now valid as a Stability Graduation under the approved policy.
+The v0.2 → v1.0 promotion has been approved as a Stability Graduation under the approved policy.
 
 This analysis was accurate at the time of creation. The versioning is no longer BLOCKED.

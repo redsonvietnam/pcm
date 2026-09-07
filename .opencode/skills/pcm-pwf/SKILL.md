@@ -1,7 +1,7 @@
 # PCM/PWF OpenCode Skill
 
-**Version:** 0.2 (Canonical Binding)  
-**Status:** Approved — PCM-GATE-01  
+**Version:** 1.0 (Canonical Binding)  
+**Status:** Canonical — PCM-GATE-02  
 
 ## Purpose
 
@@ -81,7 +81,7 @@ Never:
 
 ## Authority
 
-This skill is CANONICAL as part of PCM/PWF v0.2 baseline approved by PCM-GATE-01. A proposed v1.0 promotion is pending PCM-GATE-02.
+This skill is CANONICAL as part of PCM/PWF v1.0, approved by PCM-GATE-02 as a Stability Graduation from the v0.2 baseline approved by PCM-GATE-01.
 
 ## Implementation Notes
 

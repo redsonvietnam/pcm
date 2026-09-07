@@ -1,15 +1,41 @@
 # PCM-GATE-02-PROPOSAL — Authority Gate Proposal
 
-**Status:** PROPOSAL — NOT AN AUTHORITY DECISION
+**Status:** PROPOSAL — NOW APPROVED
 **Date:** 2026-09-07
 **Proposer:** C1 (Operator)
 **Version-Policy Classification:** STABILITY GRADUATION (0.x → 1.0.0)
 
 ---
 
-**THIS IS A PROPOSAL.**
-**IT IS NOT AN AUTHORITY DECISION.**
-**IT MUST NOT BE TREATED AS CANONICAL UNTIL R1/Authority approves it.**
+**THIS WAS A PROPOSAL.**
+**IT IS NOW APPROVED.**
+**SEE FINAL DISPOSITION BELOW.**
+
+---
+
+## FINAL DISPOSITION
+
+**Authority Decision:** PASS
+
+**Decision Date:** 2026-09-07
+
+**Approved Baseline:** f791185
+
+**Approved Classification:** STABILITY GRADUATION (0.x → 1.0.0)
+
+**Approved Version:** PCM/PWF v1.0
+
+**Canonical Status:** PCM/PWF v1.0 is now canonical.
+
+**Historical Baseline:** PCM/PWF v0.2 @ ab9f619 (approved by PCM-GATE-01) remains the previous canonical baseline.
+
+**Policy Authority:** Stability Graduation policy approved by PCM-GATE-02A.
+
+---
+
+**THIS RECORD IS NOW AN AUTHORITY APPROVAL.**
+**PCM/PWF v1.0 IS CANONICAL.**
+**PCM-GATE-02 HAS APPROVED THE v1.0 PROMOTION.**
 
 ---
 
