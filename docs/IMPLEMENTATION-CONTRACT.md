@@ -735,6 +735,29 @@ The manifest is **generated** by the distribution mechanism. It is:
 - OVERWRITTEN on re-init (it records what the distribution wrote)
 - NOT silently overwritten if user manually modified it — detect and report conflict
 
+### 10.7 `managedFiles` Semantics
+
+`managedFiles` records what the distribution mechanism **wrote** during installation. It is a provenance record, NOT an overwrite authority.
+
+**What `managedFiles` means:**
+
+- These files were created or last written by the distribution mechanism
+- The distribution mechanism can inspect these files for integrity
+- The manifest records which files are part of the installation
+
+**What `managedFiles` does NOT mean:**
+
+- The distribution mechanism MAY overwrite these files at will
+- Binding files in `managedFiles` are package-managed
+- The distribution mechanism has authority to replace locally modified bindings
+
+**Binding files in `managedFiles`:**
+
+- Listed for provenance tracking (the distribution created them)
+- NOT package-managed (the project may customize them)
+- NOT overwritten on re-init if locally modified
+- On re-init: only created if missing, never overwritten if modified
+
 ---
 
 ## 11. Ownership Contract
@@ -768,26 +791,31 @@ function writeOrSkip(targetPath, content, ownership):
     return  // idempotent, no write needed
 
   if ownership === "core" or ownership === "tooling":
-    writeFile(targetPath, content)  // overwrite
+    writeFile(targetPath, content)  // overwrite (package-managed)
     return
 
   if ownership === "binding":
-    writeFile(targetPath, content)  // overwrite (adapter-specific)
+    // PRESERVE local modification — do not overwrite
+    // Binding is adapter-owned, project may customize it
+    REPORT: "Binding file locally modified, preserving: <path>"
     return
 ```
 
+**Critical:** Binding files are NOT package-managed. The distribution mechanism creates them when missing, but PRESERVES them when locally modified. This is the architectural distinction between core (package-managed, overwriteable) and binding (adapter-owned, preserve-on-modify).
+
 ### 11.3 Conflict Scenarios
 
-| Scenario | Behavior |
-|----------|----------|
-| Target path does not exist | Create file |
-| File exists with identical content | Skip write |
-| File exists with different content, core/tooling | Overwrite |
-| File exists with different content, binding | Overwrite |
-| File exists, governance path | Refuse to write |
-| File is read-only | EXIT 1 |
-| Directory does not exist | Create directory tree |
-| Existing manifest exists | Read, validate, update or overwrite |
+| Scenario | Ownership | Behavior |
+|----------|-----------|----------|
+| Target path does not exist | any | Create file |
+| File exists with identical content | any | Skip write |
+| File exists with different content, core | core | Overwrite with package content |
+| File exists with different content, tooling | tooling | Overwrite with generated content |
+| File exists with different content, binding | binding | **Preserve existing file** — do not overwrite |
+| File exists, governance path | governance | Refuse to write |
+| File is read-only | any | EXIT 1 |
+| Directory does not exist | any | Create directory tree |
+| Existing manifest exists | tooling | Read, validate, update or overwrite |
 
 ### 11.4 Governance File Detection
 
@@ -826,10 +854,16 @@ A file is governance if:
 **Observable behavior:**
 
 1. Manifest exists but `state` is `"partial"` or missing fields
-2. All core files written (even if some exist)
-3. All binding files written (even if some exist)
+2. Core files written (even if some exist — core is package-managed)
+3. Binding files: only create if missing. Preserve locally modified binding files.
 4. Manifest overwritten with complete state
 5. Output: "PCM initialized successfully. Adapter: <id>. Files written: <count>."
+
+**Binding behavior during partial init:**
+
+- Missing binding files → create from bundled artifact
+- Existing binding files identical to bundled → skip (idempotent)
+- Existing binding files modified by user → **preserve** — do not overwrite
 
 ### 12.4 Invalid Installation
 
@@ -837,18 +871,43 @@ A file is governance if:
 
 1. Manifest exists but references files that do not exist
 2. OR core files are corrupted (empty, wrong content)
-3. All files overwritten with correct content
-4. Manifest overwritten with correct state
-5. Output: "PCM initialized successfully. Adapter: <id>. Files written: <count>."
+3. Core files overwritten with correct content (core is package-managed)
+4. Binding files: only create if missing. Preserve locally modified binding files.
+5. Manifest overwritten with correct state
+6. Output: "PCM initialized successfully. Adapter: <id>. Files written: <count>."
+
+**Critical distinction — Invalid Installation vs Locally Customized Binding:**
+
+A **locally customized binding** is NOT an invalid installation. A binding file that differs from the bundled artifact is a normal, expected condition — the project has customized its adapter configuration. This is valid and expected.
+
+An **invalid installation** is when required installation state is missing or malformed:
+- Manifest references files that do not exist
+- Core files are empty or corrupted
+- Manifest is malformed JSON
+- Required directories are missing
+
+A locally customized binding file does NOT trigger repair behavior. Only missing or corrupted core files and manifest trigger repair.
 
 ### 12.5 Manual Modification
 
 **Observable behavior:**
 
-1. User modified a managed file (core or binding)
-2. On re-init, file is overwritten with package content
-3. Output: "PCM initialized successfully. Adapter: <id>. Files written: <count>."
-4. WARNING printed: "Overwrote locally modified file: <path>"
+1. User modified a managed file
+2. On re-init:
+
+**If modified file is core (package-managed):**
+- File is overwritten with package content
+- Output: "PCM initialized successfully. Adapter: <id>. Files written: <count>."
+- INFO printed: "Overwrote locally modified core file: <path>"
+
+**If modified file is binding (adapter-owned):**
+- File is **preserved** — NOT overwritten
+- Output: "PCM initialized successfully. Adapter: <id>. Files written: <count>."
+- INFO printed: "Preserved locally modified binding: <path>"
+
+**If modified file is governance:**
+- File is NEVER touched
+- No warning (this is expected state)
 
 ### 12.6 Different Package Version
 
@@ -856,10 +915,18 @@ A file is governance if:
 
 1. Manifest exists with `distributionVersion: "1.0.0"`
 2. Running package is version `"1.1.0"`
-3. All files overwritten with new package content
-4. Manifest updated with new version
-5. Output: "PCM initialized successfully. Adapter: <id>. Files written: <count>."
-6. INFO printed: "Updated from distribution v1.0.0 to v1.1.0"
+3. Core files overwritten with new package content (core is package-managed)
+4. Binding files: only create if missing. Preserve locally modified binding files.
+5. Manifest updated with new version
+6. Output: "PCM initialized successfully. Adapter: <id>. Files written: <count>."
+7. INFO printed: "Updated from distribution v1.0.0 to v1.1.0"
+
+**Binding behavior during version update:**
+
+- Missing binding files → create from new bundled artifact
+- Existing binding files identical to new bundled → skip
+- Existing binding files modified by user → **preserve** — do not overwrite
+- Binding files that differ from OLD bundled but match NEW bundled → skip (already correct)
 
 ---
 
@@ -972,6 +1039,9 @@ The CLI runs on Node.js, but the target repository does not require Node.js. The
 | I | Windows + PowerShell | Same process, platform-specific paths | Check files written correctly |
 | J | Linux + Bash | Same process, platform-specific paths | Check files written correctly |
 | K | macOS + Zsh | Same process, platform-specific paths | Check files written correctly |
+| L | Modified binding file | **Preserved, not overwritten** | Check binding file content unchanged after re-init |
+| M | Missing binding file (partial) | Create from bundled artifact | Check binding file exists with bundled content |
+| N | Invalid installation (missing core) | Repair core, preserve binding | Check core overwritten, binding preserved |
 
 ### 15.2 Test Verification Method
 
@@ -1041,7 +1111,7 @@ Each layer operates within its defined scope.
 | 8 | Artifact resolution defined? | **YES** — `null` for generic, recursive read + path mapping for specialized |
 | 9 | Core installation defined? | **YES** — verbatim write of 3 core files, directory creation, governance protection |
 | 10 | Manifest defined? | **YES** — JSON schema with pcmVersion, distributionVersion, adapter, core, binding, managedFiles, state |
-| 11 | Ownership rules executable? | **YES** — governance → refuse, core/tooling → overwrite, binding → overwrite |
+| 11 | Ownership rules executable? | **YES** — governance → refuse, core/tooling → overwrite, binding → preserve if modified |
 | 12 | Idempotency behavior defined? | **YES** — first/repeat/partial/invalid/manual-modification/different-version all specified |
 | 13 | Failure behavior defined? | **YES** — preflight checks, no atomicity, no rollback, exit 1 on error, no false success |
 | 14 | Portability defined? | **YES** — platform-neutral, no language assumptions, forward-slash paths |
