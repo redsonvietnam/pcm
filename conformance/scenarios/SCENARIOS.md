@@ -87,6 +87,12 @@ An implementation may use any technology to verify these scenarios. The scenario
 - Pass: Each transition has a defined trigger
 - Fail: State changes are implicit
 
+**PWF-02b: Task Completion Separation**
+- Setup: Task reaches COMPLETED state
+- Test: Task completion does not trigger GATE approval or canonical-state promotion
+- Pass: Associated proposed state remains PROPOSED / PENDING GATE
+- Fail: Task completion automatically promotes proposed state to canonical
+
 **PWF-03: GATE Support**
 - Setup: Proposed state exists
 - Test: GATE verification is the only path to canonical

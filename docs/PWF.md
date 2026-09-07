@@ -50,12 +50,19 @@ Tasks follow a lifecycle with at minimum these states:
 1. **PROPOSED** — Task suggested, pending authority
 2. **AUTHORIZED** — Task approved by authority
 3. **EXECUTING** — Task actively being worked
-4. **COMPLETED** — Task verified and closed
+4. **COMPLETED** — Task execution finished, success criteria satisfied
 5. **REJECTED** — Task rejected (with rationale)
 
 Additional states (e.g., BLOCKED, SUSPENDED) are permitted but not required.
 
 Transitions between states must be explicit. State cannot change without a defined trigger.
+
+**Critical distinction:** Task COMPLETED means the task's execution/success criteria are satisfied according to task semantics. Task COMPLETED does NOT imply:
+- GATE approval
+- Canonical-state promotion
+- Implementation approval
+
+A task may be COMPLETED while any associated proposed state remains PROPOSED / PENDING GATE. Only GATE approval with AUTHORITY action promotes proposed state to canonical. Not every task requires a GATE — only tasks that change canonical state require GATE approval.
 
 ### 4.3 Handoff
 
@@ -183,7 +190,9 @@ Escalation occurs when:
 - Conflict between invariants
 - Recovery mechanism insufficient
 
-Escalation transfers authority or decision-making to a higher-level authority scope.
+Escalation is the act of surfacing a decision beyond the current authority boundary. Escalation itself does NOT create, grant, or transfer authority.
+
+Actual authority transfer must happen only through the explicit authority mechanism defined by PCM (PCM section 11). Escalation may request resolution by an already-authorized higher authority, or initiate an explicit authority delegation — but escalation alone does not constitute authority transfer.
 
 ## 11. Single-Actor Validity
 

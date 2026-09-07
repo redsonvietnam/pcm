@@ -95,9 +95,9 @@ PWF-Conformant implementations must also satisfy:
 
 ### 4.2 Task Lifecycle
 
-**Test:** Tasks follow a lifecycle with at minimum PROPOSED, AUTHORIZED, EXECUTING, COMPLETED, and REJECTED states. State transitions are explicit.
+**Test:** Tasks follow a lifecycle with at minimum PROPOSED, AUTHORIZED, EXECUTING, COMPLETED, and REJECTED states. State transitions are explicit. Task COMPLETED does not imply GATE approval, canonical-state promotion, or implementation approval.
 
-**Counterexample:** If tasks have no defined lifecycle or state transitions are implicit, it does not conform.
+**Counterexample:** If tasks have no defined lifecycle, state transitions are implicit, or task completion automatically triggers canonical state promotion, it does not conform.
 
 ### 4.3 GATE Support
 
