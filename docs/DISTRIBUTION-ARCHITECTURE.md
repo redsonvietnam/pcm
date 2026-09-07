@@ -126,9 +126,9 @@ Four distinct concepts must not be collapsed:
 
 ### 6.1 Catalog Entry
 
-**What it is:** A metadata record in the adapter catalog that declares an adapter exists and is compatible with certain environments.
+**What it is:** A metadata record in the adapter catalog that declares an adapter exists, is compatible with certain environments, and requires certain runtime capabilities.
 
-**Contains:** Adapter ID, name, platforms, shells, tested status, priority, bundled artifact path.
+**Contains:** Adapter ID, name, platforms, shells, capability requirements (`requires`), tested status, priority, bundled artifact path.
 
 **Does NOT contain:** Actual adapter files, trust decisions, installation state.
 
@@ -231,14 +231,23 @@ CLI / BOOTSTRAP
             ▼                         ▼
 ADAPTER CATALOG / DISCOVERY     ENVIRONMENT DETECTION
   registry/pcm-adapters.json      (observes: platform,
-  (lists known adapters,            shell, tools)
-   bundled artifact paths,          (env ≠ availability)
-   declared compatibility)
+  (lists known adapters,            shell, tools,
+   bundled artifact paths,           capabilities)
+   capability requirements,         (env ≠ availability
+   declared compatibility)           ≠ capability match)
             │                         │
             ▼                         ▼
       ┌─────────────────────────────────┐
+      │   CAPABILITY CHECK              │
+      │   adapter.requires satisfied    │
+      │   by env.capabilities?          │
+      └───────────────┬─────────────────┘
+                      │
+                      ▼
+      ┌─────────────────────────────────┐
       │   DETERMINISTIC SELECTION       │
-      │   catalog + env → adapter       │
+      │   catalog + env + capabilities  │
+      │   → adapter                     │
       │   (tested first, then priority) │
       └───────────────┬─────────────────┘
                       │
@@ -276,6 +285,7 @@ AUTHORITY          DISCOVERY           EXECUTION
 PCM/PWF specs       Catalog lookup     CLI writes files
 GATE decisions      Env detection      Adapter selection
 Project governance  Trust policy       Bootstrap process
+                    Capability check
 ```
 
 ---
@@ -545,7 +555,9 @@ Detection observes the environment. It answers:
 1. What platform? (windows, linux, macos)
 2. What shell? (powershell, bash, zsh)
 3. What git version?
-4. What tool is available? (opencode, copilot, codex, cursor, etc.)
+4. What tool capabilities are present? (opencode, copilot, codex, cursor, etc.)
+
+The result is an environment record containing: `platform`, `shell`, `gitVersion`, `capabilities` (map of capability names to presence/version).
 
 ### 14.2 What Detection Does NOT Do
 
@@ -559,31 +571,38 @@ Detection does NOT:
 
 Detection informs. Catalog lists candidates. Policy decides trust. Selection picks one.
 
-### 14.3 Detection ≠ Availability
+### 14.3 Detection ≠ Availability ≠ Capability Match
 
-**Critical distinction:** Detecting that OpenCode is installed does NOT mean the OpenCode adapter is available. Detection is an observation; adapter availability is a catalog lookup; adapter trust is a policy decision.
+**Critical distinction:** Detecting that OpenCode is installed does NOT mean the OpenCode adapter is selectable. Three separate conditions must hold:
+
+1. **Detection:** Tool is observed in the environment (observation)
+2. **Availability:** Adapter is listed in the catalog for this platform/shell (discovery)
+3. **Capability match:** Adapter's `requires` is satisfied by observed capabilities (compatibility)
 
 Example:
 
 ```
 Detection: OpenCode is installed (capability: yes)
-Catalog: OpenCode adapter listed for this platform
+Catalog: OpenCode adapter listed, requires {"opencode": "*"}
+Capability match: YES (opencode present in environment)
 Trust policy: OpenCode adapter is trusted
-Result: OpenCode adapter is AVAILABLE and TRUSTED
+Result: OpenCode adapter is SELECTABLE
 ```
 
 vs.
 
 ```
-Detection: OpenCode is installed (capability: yes)
-Catalog: OpenCode adapter listed for this platform
-Trust policy: OpenCode adapter is NOT trusted
-Result: OpenCode adapter is AVAILABLE but NOT TRUSTED
+Detection: OpenCode is NOT installed (capability: no)
+Catalog: OpenCode adapter listed, requires {"opencode": "*"}
+Capability match: NO (opencode absent from environment)
+Trust policy: OpenCode adapter is trusted
+Result: OpenCode adapter is NOT SELECTABLE → falls to generic
 ```
 
 This separation prevents:
 - False positives (tool installed but adapter not registered)
 - False negatives (adapter available but tool not detected)
+- Capability mismatches (adapter registered but required tool absent)
 - Trust assumptions (adapter registered ≠ adapter trusted)
 
 ---
@@ -600,13 +619,14 @@ Adapters are discovered through the package-bundled catalog. The catalog is the 
 2. Filter adapters by:
    - Platform match (windows/linux/macos)
    - Shell match (powershell/bash/zsh)
+   - Capability match (tool/capability requirements satisfied)
    - Tested status (tested/untested)
 3. If multiple adapters match → apply selection algorithm (Section 18)
 4. If no adapters match → use generic adapter (Section 17)
 
 ### 15.3 Discovery ≠ Selection ≠ Trust ≠ Resolution
 
-Discovery finds all candidates. Trust policy filters to trusted candidates. Selection picks exactly one. Resolution maps the selection to bundled file content. These are separate steps.
+Discovery finds all candidates that match platform, shell, AND capability requirements. Trust policy filters to trusted candidates. Selection picks exactly one. Resolution maps the selection to bundled file content. These are separate steps.
 
 ---
 
@@ -628,6 +648,7 @@ Bundled in the `pcm` npm package at `registry/pcm-adapters.json`. NOT a reposito
       "name": "OpenCode Adapter",
       "platforms": ["windows", "linux", "macos"],
       "shells": ["powershell", "bash", "zsh"],
+      "requires": { "opencode": "*" },
       "tested": true,
       "priority": 1,
       "artifact": "adapters/opencode"
@@ -637,6 +658,7 @@ Bundled in the `pcm` npm package at `registry/pcm-adapters.json`. NOT a reposito
       "name": "GitHub Copilot Adapter",
       "platforms": ["windows", "linux", "macos"],
       "shells": ["powershell", "bash", "zsh"],
+      "requires": { "copilot": "*" },
       "tested": true,
       "priority": 2,
       "artifact": "adapters/copilot"
@@ -646,6 +668,7 @@ Bundled in the `pcm` npm package at `registry/pcm-adapters.json`. NOT a reposito
       "name": "Codex Adapter",
       "platforms": ["windows", "linux", "macos"],
       "shells": ["powershell", "bash", "zsh"],
+      "requires": { "codex": "*" },
       "tested": false,
       "priority": 3,
       "artifact": "adapters/codex"
@@ -655,6 +678,7 @@ Bundled in the `pcm` npm package at `registry/pcm-adapters.json`. NOT a reposito
       "name": "Generic Adapter",
       "platforms": ["*"],
       "shells": ["*"],
+      "requires": null,
       "tested": true,
       "priority": 999,
       "artifact": null
@@ -671,11 +695,26 @@ Bundled in the `pcm` npm package at `registry/pcm-adapters.json`. NOT a reposito
 | `name` | string | yes | Human-readable name |
 | `platforms` | string[] | yes | Supported platforms (`["*"]` = all) |
 | `shells` | string[] | yes | Supported shells (`["*"]` = all) |
+| `requires` | object\|null | yes | Capability/tool requirements (`null` = technology-agnostic, no tool required) |
 | `tested` | boolean | yes | Whether adapter has been validated on listed platforms |
 | `priority` | number | yes | Selection order (lower = higher priority) |
 | `artifact` | string\|null | yes | Relative path to bundled adapter files within package; `null` = generic (no binding files) |
 
-### 16.4 Catalog Rules
+### 16.4 Capability Requirements (`requires`)
+
+The `requires` field declares what runtime capabilities the adapter needs to function. Each key is a capability name; each value is a version requirement string (`"*"` = any version).
+
+**Semantics:**
+- `null` — Adapter is technology-agnostic. No specific tool required. (Generic adapter.)
+- `{}` (empty object) — Equivalent to `null`. No capabilities required.
+- `{ "opencode": "*" }` — Requires OpenCode to be present in the environment.
+- `{ "copilot": ">=2.0" }` — Requires GitHub Copilot version 2.0 or higher.
+
+**Capability names** are identifiers for tools/runtimes that environment detection can observe. They are NOT PCM primitives. They are NOT adapter semantic capabilities. They are purely distribution-layer concerns for determining whether an adapter can bind to the observed environment.
+
+**Relationship to ADAPTER-MODEL.md:** The capability contract in `docs/ADAPTER-MODEL.md` defines what semantic capabilities an adapter MUST provide (canonical-state observation, persistence, etc.). The `requires` field in the catalog defines what runtime tools the adapter needs to deliver those capabilities. These are complementary, not overlapping.
+
+### 16.5 Catalog Rules
 
 1. Every adapter MUST be listed in the catalog to be discoverable
 2. Adapters not in the catalog are not discoverable by `npx pcm init`
@@ -683,10 +722,12 @@ Bundled in the `pcm` npm package at `registry/pcm-adapters.json`. NOT a reposito
 4. `priority` determines selection order (lower = higher priority)
 5. `tested` indicates whether the adapter has been validated on the listed platforms
 6. `artifact` points to the bundled path; `null` means the adapter provides no binding files (generic)
-7. Catalog entry ≠ trust — catalog lists candidates; policy decides trust
-8. Catalog entry ≠ artifact — catalog is metadata; artifact is files
+7. `requires` declares capability/tool requirements; `null` means technology-agnostic
+8. Catalog entry ≠ trust — catalog lists candidates; policy decides trust
+9. Catalog entry ≠ artifact — catalog is metadata; artifact is files
+10. Catalog entry ≠ capability — catalog declares requirements; environment provides capabilities
 
-### 16.5 What `repo` Meant and Why It Is Removed
+### 16.6 What `repo` Meant and Why It Is Removed
 
 Previous versions of the catalog included a `repo` field (e.g., `"repo": "redsonvietnam/pcm-pwf-opencode"`). This was ambiguous — it could mean source repository, artifact source, or distribution source.
 
@@ -699,9 +740,13 @@ For MVP with bundled adapters, `repo` is not needed. The `artifact` field provid
 ### 17.1 Purpose
 
 The generic adapter is the first-class fallback when:
-1. No specific adapter matches the environment
-2. The repository is unknown
-3. No trusted specialized adapter is available
+1. No specialized adapter matches the environment's capabilities
+2. No specialized adapter matches the platform/shell
+3. The repository is unknown
+4. No trusted specialized adapter is available
+5. The environment has no recognized tool capability
+
+The generic adapter is technology-agnostic. It does NOT require any specific tool, runtime, or capability. Its `requires` is `null` in the catalog.
 
 ### 17.2 What the Generic Adapter Provides
 
@@ -739,6 +784,7 @@ The generic adapter is always available, always trusted, and always safe. It is 
 |-----------|-------|
 | Always available | Yes — bundled in package, no external dependency |
 | Always trusted | Yes — package integrity is sufficient |
+| Always capable | Yes — requires null, no tool dependency |
 | Always works offline | Yes — no network required |
 | Never requires trust policy | Yes — built-in trust |
 | Provides binding files | No — artifact is null |
@@ -756,7 +802,8 @@ Given: Catalog C, Environment E, Trust Policy P
 function selectAdapter(C, E, P):
   candidates = filter(C.adapters, a =>
     a.platforms.includes(E.platform) &&
-    a.shells.includes(E.shell)
+    a.shells.includes(E.shell) &&
+    capabilitiesSatisfied(a.requires, E.capabilities)
   )
 
   trusted = filter(candidates, a =>
@@ -771,26 +818,50 @@ function selectAdapter(C, E, P):
     2. priority ASC (lower priority number = higher priority)
 
   return trusted[0]
+
+function capabilitiesSatisfied(requires, envCapabilities):
+  if requires is null or empty:
+    return true  // technology-agnostic, always satisfied
+  for each [capability, versionReq] in requires:
+    if capability not in envCapabilities:
+      return false
+    // version check omitted for MVP (any version satisfies "*")
+  return true
 ```
 
-### 18.2 Determinism Guarantee
+### 18.2 Capability Compatibility
 
-Given the same catalog C, environment E, and trust policy P, the algorithm ALWAYS returns the same adapter. There is no randomness, no heuristic, no fuzzy matching.
+A specialized adapter is ONLY selectable if its `requirements` are satisfied by the observed environment:
 
-### 18.3 Selection Table
+| Adapter | `requires` | Environment has OpenCode? | Environment has Copilot? | Capable? |
+|---------|-----------|---------------------------|--------------------------|----------|
+| opencode | `{"opencode": "*"}` | YES | — | **YES** |
+| opencode | `{"opencode": "*"}` | NO | — | **NO** → falls to generic |
+| copilot | `{"copilot": "*"}` | — | YES | **YES** |
+| copilot | `{"copilot": "*"}` | — | NO | **NO** → falls to generic |
+| generic | `null` | — | — | **YES** → always capable |
+
+**Critical rule:** Selection MUST NEVER choose a specialized adapter solely because platform + shell match. Capability compatibility is a mandatory filter.
+
+### 18.3 Determinism Guarantee
+
+Given the same catalog C, environment E (including capabilities), and trust policy P, the algorithm ALWAYS returns the same adapter. There is no randomness, no heuristic, no fuzzy matching.
+
+### 18.4 Selection Table
 
 ```
-┌─────────────┬─────────────┬──────────────┬────────────────┐
-│ Platform    │ Shell       │ Adapter      │ Confidence     │
-├─────────────┼─────────────┼──────────────┼────────────────┤
-│ windows     │ powershell  │ opencode     │ high           │
-│ windows     │ bash        │ copilot      │ high           │
-│ linux       │ bash        │ opencode     │ high           │
-│ linux       │ zsh         │ opencode     │ high           │
-│ macos       │ zsh         │ opencode     │ high           │
-│ macos       │ bash        │ copilot      │ high           │
-│ any         │ any         │ generic      │ fallback       │
-└─────────────┴─────────────┴──────────────┴────────────────┘
+┌─────────────┬─────────────┬──────────────┬──────────────┬────────────────┐
+│ Platform    │ Shell       │ Capability   │ Adapter      │ Confidence     │
+├─────────────┼─────────────┼──────────────┼──────────────┼────────────────┤
+│ windows     │ powershell  │ opencode     │ opencode     │ high           │
+│ windows     │ bash        │ copilot      │ copilot      │ high           │
+│ linux       │ bash        │ opencode     │ opencode     │ high           │
+│ linux       │ zsh         │ opencode     │ opencode     │ high           │
+│ macos       │ zsh         │ opencode     │ opencode     │ high           │
+│ macos       │ bash        │ copilot      │ copilot      │ high           │
+│ windows     │ powershell  │ (none)       │ generic      │ fallback       │
+│ any         │ any         │ any          │ generic      │ fallback       │
+└─────────────┴─────────────┴──────────────┴──────────────┴────────────────┘
 ```
 
 ---
@@ -857,6 +928,10 @@ DISCOVERABLE
 DECLARED COMPATIBLE
   │  platform/shell match confirmed
   ▼
+CAPABLE
+  │  adapter's requires satisfied by environment capabilities
+  │  if not capable → skip adapter, try next candidate
+  ▼
 TRUST EVALUATED
   │  trust policy consulted
   │  if not trusted → fall back to generic
@@ -866,7 +941,7 @@ ARTIFACT RESOLVED
   │  if artifact is null → generic (no binding)
   ▼
 TRUSTED
-  │  policy permits, artifact available
+  │  policy permits, artifact available, capabilities met
   ▼
 INSTALLED
      files written to target repository
@@ -1057,20 +1132,24 @@ pcm update MUST NOT:
 
 ```
 OBSERVE
-  │  Detect platform, shell, tools (observation only)
-  │  env ≠ availability
+  │  Detect platform, shell, tools, capabilities (observation only)
+  │  env ≠ availability ≠ capability match
   ▼
 DISCOVER
   │  Read catalog, find candidates
-  │  Filter by platform/shell match
+  │  Filter by platform/shell/capability match
+  ▼
+CAPABILITY CHECK
+  │  For each candidate: are adapter's requires satisfied?
+  │  If not capable → skip, try next candidate
   ▼
 EVALUATE TRUST
   │  Check trust policy
   │  Is candidate trusted?
   ▼
-NO TRUSTED SPECIALIZED ADAPTER?
+NO TRUSTED CAPABLE SPECIALIZED ADAPTER?
   │  Fall back to generic adapter
-  │  Generic is always trusted
+  │  Generic is always trusted, always capable
   ▼
 RESOLVE ARTIFACT
   │  Read bundled files from package
@@ -1096,7 +1175,7 @@ Language/platform/tool detection is observation only. The following is NOT a val
 
 ```
 INVALID: "OpenCode is installed → use OpenCode adapter"
-VALID:   "OpenCode is installed → check catalog → check trust → resolve artifact → select adapter"
+VALID:   "OpenCode is installed → check catalog → check requires → check trust → select adapter"
 ```
 
 ### 24.3 Unknown Repository Example
@@ -1111,9 +1190,10 @@ $ npx pcm init repo-Z
    - Platform: windows
    - Shell: powershell
    - Git: 2.45.0
-   - OpenCode: available (observation)
+   - Capabilities: { "opencode": "1.2.0" } (observation)
 3. Discovering adapters:
    - Catalog match: opencode (platform=windows, shell=powershell)
+   - Capability match: opencode requires {"opencode": "*"} → SATISFIED
    - Declared compatible: YES
 4. Evaluating trust:
    - Trust policy: opencode is trusted
@@ -1138,6 +1218,37 @@ $ npx pcm init repo-Z
 10. Creating manifest:
     - pcm/.pcm-manifest.json
 11. Done. Adapter: opencode. Files written: 6.
+```
+
+**Capability-absent example:**
+
+```
+$ npx pcm init repo-Z  (on machine without OpenCode)
+
+1. Reading catalog: registry/pcm-adapters.json (bundled in package)
+2. Detecting environment:
+   - Platform: windows
+   - Shell: powershell
+   - Git: 2.45.0
+   - Capabilities: {} (no tools detected)
+3. Discovering adapters:
+   - Catalog match: opencode (platform=windows, shell=powershell)
+   - Capability match: opencode requires {"opencode": "*"} → NOT SATISFIED
+   - Catalog match: copilot (platform=windows, shell=powershell)
+   - Capability match: copilot requires {"copilot": "*"} → NOT SATISFIED
+   - No capable specialized adapter found
+4. Falling back to generic adapter
+5. Selecting adapter: generic (always capable, always trusted)
+6. Resolving artifact: artifact is null (generic, no binding files)
+7. Installing core:
+   - pcm/docs/PCM.md
+   - pcm/docs/PWF.md
+   - pcm/docs/CONFORMANCE.md
+8. Binding: (none — generic adapter provides no binding files)
+9. Creating manifest:
+   - pcm/.pcm-manifest.json
+10. Done. Adapter: generic. Files written: 4.
+11. Print: "Generic adapter applied. Configure your tools manually."
 ```
 
 ---
@@ -1347,6 +1458,7 @@ The adapter selection may differ, but the process is identical.
 │ Target repo read-only│ Cannot write    │ Check permissions                 │
 │ No git installed    │ Detection fails  │ Install git (optional)            │
 │ No adapter matches  │ Generic fallback │ Use generic adapter               │
+│ No capable adapter  │ Generic fallback │ Use generic adapter               │
 │ Catalog empty       │ Generic fallback │ Use generic adapter               │
 │ Package missing     │ Fatal error      │ npm install pcm                   │
 │ Trust policy missing│ Generic fallback │ Use generic adapter               │
@@ -1426,6 +1538,7 @@ To add a new adapter:
 | Can implementation determine exact adapter artifact location? | **YES** — `artifact` field in catalog points to bundled path |
 | Can implementation resolve adapter artifacts without network? | **YES** — All artifacts bundled in package (MVP) |
 | Can implementation distinguish adapter definition from artifact from distribution from trust from binding? | **YES** — Five concepts explicitly separated (Section 6) |
+| Can implementation prevent selecting a specialized adapter when required tool is absent? | **YES** — `requires` field declares capability requirements; selection checks `capabilitiesSatisfied` |
 
 ### Readiness Result
 
@@ -1495,6 +1608,7 @@ The architecture is **IMPLEMENTATION-READY**.
 │ Target repo read-only│ Cannot write    │ Check permissions                 │
 │ No git installed    │ Detection fails  │ Install git (optional)            │
 │ No adapter matches  │ Generic fallback │ Use generic adapter               │
+│ No capable adapter  │ Generic fallback │ Use generic adapter               │
 │ Catalog empty       │ Generic fallback │ Use generic adapter               │
 │ Package missing     │ Fatal error      │ npm install pcm                   │
 │ Trust policy missing│ Generic fallback │ Use generic adapter               │
@@ -1514,6 +1628,11 @@ The architecture is **IMPLEMENTATION-READY**.
 ┌─────────────────────┐
 │ DECLARED COMPATIBLE │  Metadata says env matches
 └────────┬────────────┘
+         │ requires satisfied
+         ▼
+┌─────────────────┐
+│     CAPABLE     │  Required tool/capability present
+└────────┬────────┘
          │ policy consulted
          ▼
 ┌─────────────────┐
@@ -1527,7 +1646,7 @@ The architecture is **IMPLEMENTATION-READY**.
          │ files available
          ▼
 ┌─────────────────┐
-│    TRUSTED      │  Policy permits, artifact ready
+│    TRUSTED      │  Policy permits, artifact ready, capable
 └────────┬────────┘
          │ npx pcm init selects
          ▼
@@ -1556,6 +1675,10 @@ The architecture is **IMPLEMENTATION-READY**.
 ├──────────────────────┼───────────────────────────────────────────────┤
 │ TRUST EVALUATION     │ Policy decision about whether an adapter     │
 │                      │ may be used (separate from discovery)        │
+├──────────────────────┼───────────────────────────────────────────────┤
+│ CAPABILITY MATCH     │ Distribution-layer check that adapter's      │
+│                      │ requires are satisfied by observed env       │
+│                      │ capabilities (separate from trust)           │
 └──────────────────────┴───────────────────────────────────────────────┘
 ```
 
