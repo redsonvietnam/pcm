@@ -105,12 +105,17 @@ function execute(targetDir, packageRoot) {
     }
   }
 
+  const allManagedFiles = [
+    ...getCoreTargetPaths(),
+    ...(bindingRecords ? bindingRecords.map((r) => r.targetPath) : []),
+  ];
+
   const newManifest = createManifest({
     pcmVersion: PCM_VERSION,
     distributionVersion: DISTRIBUTION_VERSION,
     adapter: selectedAdapter,
     binding: bindingRecords ? bindingRecords.map((r) => r.targetPath) : [],
-    managedFiles: [],
+    managedFiles: allManagedFiles,
   });
 
   const existingManifest = readManifest(targetDir);
@@ -138,12 +143,6 @@ function execute(targetDir, packageRoot) {
   } catch (err) {
     return { exitCode: 1, error: err.message, recovery: 'Check file permissions and re-run npx pcm init' };
   }
-
-  const allManagedFiles = [
-    ...getCoreTargetPaths(),
-    ...(bindingRecords ? bindingRecords.map((r) => r.targetPath) : []),
-  ];
-  newManifest.managedFiles = allManagedFiles;
 
   if (idempotency.status === 'manually-modified') {
     console.error(`Manifest was manually modified. Current state: ${JSON.stringify(newManifest, null, 2)}. Existing: ${JSON.stringify(existingManifest, null, 2)}. Manifest not overwritten. To regenerate, delete the manifest and re-run npx pcm init.`);
