@@ -53,6 +53,7 @@ function manifestsMatch(a, b) {
     a.distributionVersion === b.distributionVersion &&
     a.adapter.id === b.adapter.id &&
     a.adapter.artifactPath === b.adapter.artifactPath &&
+    a.adapter.version === b.adapter.version &&
     a.state === b.state &&
     JSON.stringify(a.core) === JSON.stringify(b.core) &&
     JSON.stringify(a.binding) === JSON.stringify(b.binding) &&

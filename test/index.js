@@ -412,6 +412,72 @@ console.log('Manifest: manually modified -> preserve');
 }
 
 // ================================================================
+// MANIFEST: adapter.version tampering -> manually modified, preserved
+// ================================================================
+console.log('Manifest: adapter.version tamper -> preserve');
+{
+  const d = tmpDir();
+  execute(d, pkgRoot);
+  const m1 = getManifest(d);
+  const originalVersion = m1.adapter.version;
+
+  // Tamper: change only adapter.version
+  m1.adapter.version = 'tampered-version';
+  writeManifest(d, m1);
+
+  // Re-init: manifestsMatch now compares adapter.version, so it returns false.
+  // checkIdempotency: adapter.id matches, distributionVersion matches, state matches,
+  // all managed files exist -> classified as manually-modified -> manifest preserved.
+  const r = execute(d, pkgRoot);
+  assert(r.exitCode === 0, 'adapter.version tamper does not cause error');
+  const m2 = getManifest(d);
+  assert(m2.adapter.version === 'tampered-version',
+    'adapter.version tamper preserved (manually-modified)');
+  assert(m2.adapter.version !== originalVersion, 'adapter.version was actually changed');
+  cleanup(d);
+}
+
+// ================================================================
+// MANIFEST: adapter.version only differs -> manifestsMatch returns false
+// ================================================================
+console.log('Manifest: adapter.version mismatch -> no match');
+{
+  const m1 = createManifest({
+    pcmVersion: '1.0',
+    distributionVersion: '1.0.0',
+    adapter: { id: 'opencode', artifact: 'adapters/opencode', name: 'OpenCode Adapter' },
+    binding: [],
+    managedFiles: [],
+  });
+  const m2 = createManifest({
+    pcmVersion: '1.0',
+    distributionVersion: '1.0.0',
+    adapter: { id: 'opencode', artifact: 'adapters/opencode', name: 'OpenCode Adapter' },
+    binding: [],
+    managedFiles: [],
+  });
+  m2.adapter.version = 'different-version';
+  assert(!manifestsMatch(m1, m2), 'manifests with different adapter.version do not match');
+}
+
+// ================================================================
+// MANIFEST: initializedAt-only difference -> manifestsMatch returns true
+// ================================================================
+console.log('Manifest: initializedAt only -> still matches');
+{
+  const m1 = createManifest({
+    pcmVersion: '1.0',
+    distributionVersion: '1.0.0',
+    adapter: { id: 'generic', artifact: null, name: 'Generic' },
+    binding: [],
+    managedFiles: [],
+  });
+  const m2 = JSON.parse(JSON.stringify(m1));
+  m2.initializedAt = '2020-01-01T00:00:00.000Z';
+  assert(manifestsMatch(m1, m2), 'manifests with only initializedAt different still match');
+}
+
+// ================================================================
 // MANIFEST: manually modified managedFiles -> stale (missing file)
 // ================================================================
 console.log('Manifest: manual mod with missing file -> stale');
