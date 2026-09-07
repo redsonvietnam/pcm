@@ -1,0 +1,7 @@
+# Codex Adapter — Deferred
+
+**Status:** Not yet implemented
+
+This adapter provides PCM/PWF binding for Codex.
+
+Actual binding content is deferred until Codex-specific integration semantics are defined.

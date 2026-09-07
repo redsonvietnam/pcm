@@ -1,0 +1,46 @@
+{
+  "version": "1.0",
+  "defaultAdapter": "generic",
+  "adapters": [
+    {
+      "id": "opencode",
+      "name": "OpenCode Adapter",
+      "platforms": ["windows", "linux", "macos"],
+      "shells": ["powershell", "bash", "zsh"],
+      "requires": { "opencode": "*" },
+      "tested": true,
+      "priority": 1,
+      "artifact": "adapters/opencode"
+    },
+    {
+      "id": "copilot",
+      "name": "GitHub Copilot Adapter",
+      "platforms": ["windows", "linux", "macos"],
+      "shells": ["powershell", "bash", "zsh"],
+      "requires": { "copilot": "*" },
+      "tested": false,
+      "priority": 2,
+      "artifact": "adapters/copilot"
+    },
+    {
+      "id": "codex",
+      "name": "Codex Adapter",
+      "platforms": ["windows", "linux", "macos"],
+      "shells": ["powershell", "bash", "zsh"],
+      "requires": { "codex": "*" },
+      "tested": false,
+      "priority": 3,
+      "artifact": "adapters/codex"
+    },
+    {
+      "id": "generic",
+      "name": "Generic Adapter",
+      "platforms": ["*"],
+      "shells": ["*"],
+      "requires": null,
+      "tested": true,
+      "priority": 999,
+      "artifact": null
+    }
+  ]
+}
