@@ -14,12 +14,17 @@ const PROVENANCE = ['self-reported', 'independently-produced', 'automatically-ob
 const DECISIONS = ['approved', 'rejected'];
 const AUTHORITY_ROLE = 'authority';
 
+const ISO_8601_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/;
+
 function isNonEmptyString(v) {
   return typeof v === 'string' && v.trim().length > 0;
 }
 
 function isIsoTimestamp(v) {
-  return typeof v === 'string' && !Number.isNaN(Date.parse(v));
+  if (typeof v !== 'string') return false;
+  if (!ISO_8601_REGEX.test(v)) return false;
+  const t = Date.parse(v);
+  return !Number.isNaN(t);
 }
 
 function isObject(v) {

@@ -126,7 +126,7 @@ Exactly the three categories established by PCM Section 12:
 
 Freshness is **data-driven**, not a global timeout.
 
-- An evidence record with `expiresAt` set is stale when `now > expiresAt`.
+- An evidence record with `expiresAt` set is stale when `now >= expiresAt` (evidence is current only while `now < expiresAt`; at exactly `expiresAt`, evidence is stale).
 - An evidence record with `expiresAt: null` has no self-imposed expiry.
 - Freshness is evaluated relative to an explicit `now` reference supplied at validation/assessment time.
 

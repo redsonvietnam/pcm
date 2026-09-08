@@ -1194,6 +1194,107 @@ console.log('Governance: malformed evidence rejected');
   assert(!r.accepted && r.status === 'malformed', 'malformed evidence rejected');
 }
 
+console.log('Governance: boundary now === expiresAt => stale');
+{
+  const ev = {
+    id: 'ev-boundary',
+    provenance: 'self-reported',
+    subject: 'x',
+    producedAt: '2026-09-08T10:00:00.000Z',
+    expiresAt: '2026-09-08T12:00:00.000Z',
+    invalidatedAt: null,
+  };
+  const r = evaluateEvidence(ev, { now: Date.parse('2026-09-08T12:00:00.000Z') });
+  assert(!r.accepted && r.status === 'stale', `exact boundary stale, got ${r.status}`);
+}
+
+console.log('Governance: boundary now < expiresAt => current');
+{
+  const ev = {
+    id: 'ev-before-boundary',
+    provenance: 'automatically-observed',
+    subject: 'x',
+    producedAt: '2026-09-08T10:00:00.000Z',
+    expiresAt: '2026-09-08T12:00:00.000Z',
+    invalidatedAt: null,
+  };
+  const r = evaluateEvidence(ev, { now: Date.parse('2026-09-08T11:59:59.999Z') });
+  assert(r.accepted && r.status === 'current', `just before boundary current, got ${r.status}`);
+}
+
+console.log('Governance: invalidated evidence remains invalidated regardless of expiry');
+{
+  const ev = {
+    id: 'ev-invalidated-stale',
+    provenance: 'independently-produced',
+    subject: 'x',
+    producedAt: '2026-09-08T10:00:00.000Z',
+    expiresAt: '2026-09-08T11:00:00.000Z',
+    invalidatedAt: '2026-09-08T10:30:00.000Z',
+  };
+  const r = evaluateEvidence(ev, { now: Date.parse('2026-09-08T12:00:00.000Z') });
+  assert(!r.accepted && r.status === 'invalidated', `invalidated takes precedence, got ${r.status}`);
+}
+
+console.log('Governance: valid ISO timestamp accepted');
+{
+  const ev = {
+    id: 'ev-iso',
+    provenance: 'self-reported',
+    subject: 'x',
+    producedAt: '2026-09-08T10:00:00.000Z',
+    expiresAt: '2026-09-08T12:00:00.000Z',
+    invalidatedAt: null,
+  };
+  assert(validateEvidence(ev).valid, 'canonical ISO timestamp accepted');
+}
+
+console.log('Governance: malformed timestamp rejected');
+{
+  const ev = {
+    id: 'ev-badt',
+    provenance: 'self-reported',
+    subject: 'x',
+    producedAt: 'not-a-date',
+    invalidatedAt: null,
+  };
+  assert(!validateEvidence(ev).valid, 'malformed producedAt rejected');
+  const ev2 = {
+    id: 'ev-badt2',
+    provenance: 'self-reported',
+    subject: 'x',
+    producedAt: '2026-09-08T10:00:00.000Z',
+    expiresAt: '09/08/2026',
+    invalidatedAt: null,
+  };
+  assert(!validateEvidence(ev2).valid, 'non-ISO expiresAt rejected');
+  const ev3 = {
+    id: 'ev-badt3',
+    provenance: 'self-reported',
+    subject: 'x',
+    producedAt: '2026-09-08T10:00:00.000Z',
+    invalidatedAt: 'September 8, 2026',
+  };
+  assert(!validateEvidence(ev3).valid, 'non-ISO invalidatedAt rejected');
+}
+
+console.log('Governance: canonical-version binding unchanged');
+{
+  const ev = {
+    id: 'ev-bind',
+    provenance: 'independently-produced',
+    subject: 'x',
+    producedAt: '2026-09-08T10:00:00.000Z',
+    canonicalVersion: 'canonical/2026-09-08/v1',
+    expiresAt: null,
+    invalidatedAt: null,
+  };
+  const r = evaluateEvidence(ev, { now: Date.now(), expectedCanonicalVersion: 'canonical/2026-09-08/v1' });
+  assert(r.accepted && r.status === 'current', 'binding matches');
+  const r2 = evaluateEvidence(ev, { now: Date.now(), expectedCanonicalVersion: 'canonical/OTHER' });
+  assert(!r2.accepted && r2.status === 'wrong-binding', 'binding mismatch');
+}
+
 // ---- GATE ----
 
 function baseEvidence() {
