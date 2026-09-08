@@ -1,0 +1,26 @@
+version: 0.1
+machine:
+  id: home
+  platform: windows
+checkpoint:
+  id: home-YYYYMMDD-purpose
+  created_at: YYYY-MM-DDTHH:MM:SS+07:00
+project:
+  repository: owner/project
+  ref: main
+  commit: <sha>
+components:
+  - name: <component>
+    source: <source reference>
+    ref: <ref>
+    commit: <sha>
+    status: verified
+local_state:
+  - name: <local item>
+    classification: machine-specific
+    fingerprint: <optional sha256>
+verification:
+  status: passed
+  evidence: <reference>
+notes:
+  - <intentional machine-specific difference or constraint>

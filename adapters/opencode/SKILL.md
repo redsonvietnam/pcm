@@ -28,7 +28,24 @@ Before executing a task:
 
 Use repository tools (git, filesystem) to observe state.
 
-### 3. Execute Authorized Task
+### 3. Machine-Local Context (Optional MBP Companion)
+
+When work depends materially on machine-local state, actors SHOULD use the MBP companion specification in `docs/MBP.md`.
+
+The MBP layer may record:
+- machine identity
+- repository commit/reference in use
+- relevant toolchain versions
+- local agent/tool bindings
+- machine-specific constraints
+- selected fingerprints
+- verification status
+
+A relay branch or tag MAY serve as the repository checkpoint anchor for a machine baseline. The relay is not canonical state and does not constitute approval.
+
+MBP must never be used to store secrets or to imply authority. PCM/PWF semantics remain authoritative.
+
+### 4. Execute Authorized Task
 
 Only execute tasks that are:
 - Explicitly authorized
@@ -38,14 +55,14 @@ Only execute tasks that are:
 Follow task lifecycle:
 - PROPOSED → AUTHORIZED → EXECUTING → COMPLETED
 
-### 4. Record Evidence
+### 5. Record Evidence
 
 For each action:
 - Record what was done
 - Record evidence provenance (self-reported, independent, automatic)
 - Store evidence with task record
 
-### 5. Produce Handoff
+### 6. Produce Handoff
 
 When work transfers:
 - Create handoff with required semantics
@@ -56,14 +73,16 @@ When work transfers:
 - Include evidence
 - Include next action recommendation
 
-### 6. Check Canonical State
+When relevant, a machine baseline MAY be referenced as part of execution context to make machine-local differences reconstructable.
+
+### 7. Check Canonical State
 
 Before claiming completion:
 - Verify canonical state is current
 - Verify no stale assumptions
 - Verify evidence supports claims
 
-### 7. Stop for Gate
+### 8. Stop for Gate
 
 When GATE is required:
 - Stop execution
@@ -71,7 +90,7 @@ When GATE is required:
 - Do not self-approve
 - Wait for explicit Gate decision
 
-### 8. Refuse Self-Canonicalization
+### 9. Refuse Self-Canonicalization
 
 Never:
 - Mark own work as canonical without external AUTHORITY
@@ -85,4 +104,4 @@ This skill is CANONICAL as part of PCM/PWF v0.2 baseline approved by PCM-GATE-01
 
 ## Implementation Notes
 
-This skill provides procedures for OpenCode actors. It does not redefine PCM/PWF semantics. All semantic authority rests with docs/PCM.md, docs/PWF.md, and docs/CONFORMANCE.md.
+This skill provides procedures for OpenCode actors. It does not redefine PCM/PWF semantics. All semantic authority rests with docs/PCM.md, docs/PWF.md, and docs/CONFORMANCE.md. MBP is an optional companion layer for machine-local context and does not alter those semantics.
