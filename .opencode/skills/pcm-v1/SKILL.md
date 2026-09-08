@@ -15,6 +15,7 @@ Before any work, read:
 - `docs/PCM.md` — Canonical PCM semantics
 - `docs/PWF.md` — Canonical PWF semantics
 - `docs/CONFORMANCE.md` — Conformance criteria
+- `docs/AEP.md` — Agentic Execution Profile
 
 These documents are the source of truth. This skill defers to them.
 
@@ -28,7 +29,28 @@ Before executing a task:
 
 Use repository tools (git, filesystem) to observe state.
 
-### 3. Execute Authorized Task
+### 3. Agentic Execution
+
+This binding supports tool-enabled, multi-step execution under PCM/PWF.
+
+Actors MAY:
+- inspect state
+- call available tools
+- observe tool results
+- adapt the execution plan
+- perform additional verification
+- continue until the authorized TASK is complete or a stop condition is reached
+
+Tool availability does not grant authority.
+
+For each session, report the execution surface and material capabilities actually used. Distinguish:
+- capability available
+- action performed
+- evidence produced
+
+Do not infer successful execution merely because a tool is available.
+
+### 4. Execute Authorized Task
 
 Only execute tasks that are:
 - Explicitly authorized
@@ -38,14 +60,16 @@ Only execute tasks that are:
 Follow task lifecycle:
 - PROPOSED → AUTHORIZED → EXECUTING → COMPLETED
 
-### 4. Record Evidence
+### 5. Record Evidence
 
 For each action:
 - Record what was done
 - Record evidence provenance (self-reported, independent, automatic)
 - Store evidence with task record
 
-### 5. Produce Handoff
+For agentic sessions, evidence SHOULD identify relevant tool actions and their observed results.
+
+### 6. Produce Handoff
 
 When work transfers:
 - Create handoff with required semantics
@@ -55,15 +79,17 @@ When work transfers:
 - Include authority delegation (if applicable)
 - Include evidence
 - Include next action recommendation
+- Include material agentic execution capabilities/actions when relevant to reconstruction
 
-### 6. Check Canonical State
+### 7. Check Canonical State
 
 Before claiming completion:
 - Verify canonical state is current
 - Verify no stale assumptions
 - Verify evidence supports claims
+- Distinguish observed state from self-reported state
 
-### 7. Stop for Gate
+### 8. Stop for Gate
 
 When GATE is required:
 - Stop execution
@@ -71,7 +97,7 @@ When GATE is required:
 - Do not self-approve
 - Wait for explicit Gate decision
 
-### 8. Refuse Self-Canonicalization
+### 9. Refuse Self-Canonicalization
 
 Never:
 - Mark own work as canonical without external AUTHORITY
@@ -85,4 +111,4 @@ This skill is CANONICAL as part of PCM/PWF v0.2 baseline approved by PCM-GATE-01
 
 ## Implementation Notes
 
-This skill provides procedures for OpenCode actors. It does not redefine PCM/PWF semantics. All semantic authority rests with docs/PCM.md, docs/PWF.md, and docs/CONFORMANCE.md.
+This skill provides procedures for OpenCode actors. It does not redefine PCM/PWF semantics. All semantic authority rests with `docs/PCM.md`, `docs/PWF.md`, and `docs/CONFORMANCE.md`. Agentic Execution Profile is an execution profile and does not alter those semantics.

@@ -10,10 +10,11 @@
     "src/",
     "registry/",
     "adapters/",
-    "core/"
+    "core/",
+    "docs/"
   ],
   "scripts": {
-    "test": "node test/index.js"
+    "test": "node test/index.js && node test/opencode-verify.js"
   },
   "keywords": ["pcm", "pwf", "adapter", "bootstrap"],
   "license": "MIT"
