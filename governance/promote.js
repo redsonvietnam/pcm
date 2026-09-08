@@ -74,6 +74,25 @@ function executeGate(gate, evidenceById, opts) {
 function promoteState(canonical, proposed, gate, evidenceById, opts) {
   const now = (opts && opts.now) || Date.now();
 
+  // Binding check 1: gate.subject must reference this exact proposal
+  if (gate.subject !== proposed.id) {
+    return {
+      promoted: false,
+      gateResult: { decision: 'blocked', reasons: [`gate.subject "${gate.subject}" does not reference proposal "${proposed.id}"`] },
+      canonical,
+    };
+  }
+
+  // Binding check 2: gate must evaluate the same canonical version as the proposal
+  if (gate.canonicalVersion !== proposed.canonicalVersion) {
+    return {
+      promoted: false,
+      gateResult: { decision: 'blocked', reasons: [`gate.canonicalVersion "${gate.canonicalVersion}" does not match proposed "${proposed.canonicalVersion}"`] },
+      canonical,
+    };
+  }
+
+  // Binding check 3: proposal must reference the current canonical version
   if (proposed.canonicalVersion !== canonical.version) {
     return {
       promoted: false,
