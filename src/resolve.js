@@ -5,7 +5,7 @@ const path = require('path');
 
 const PATH_MAPPING = {
   opencode: {
-    'SKILL.md': '.opencode/skills/pcm-pwf/SKILL.md',
+    'SKILL.md': '.opencode/skills/pcm-v1/SKILL.md',
     'pcm-core.mdc': '.opencode/rules/pcm-core.mdc',
   },
 };
