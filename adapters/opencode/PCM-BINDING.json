@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "binding_id": "pcm-v1",
+  "binding_version": "1.0",
+  "adapter": "opencode",
+  "canonical_source": "redsonvietnam/pcm",
+  "skill": {
+    "canonical_path": "adapters/opencode/SKILL.md",
+    "installed_global_path": "~/.config/opencode/skills/pcm-v1/SKILL.md",
+    "sha256": "e8e69cbc5a7ccee4dd0b16798cd681194ee3c48548ecdac04b0537fe5c468f02"
+  },
+  "command": {
+    "canonical_path": "adapters/opencode/commands/pcm.md",
+    "installed_global_path": "~/.config/opencode/commands/pcm.md",
+    "command": "/pcm",
+    "sha256": "04b55f1cae9d3850b018e4a129178eca35def938208190375da74f1d81c585a6"
+  },
+  "verification": {
+    "content_identity": "sha256",
+    "behavioral_conformance": "session-level verification required"
+  }
+}
