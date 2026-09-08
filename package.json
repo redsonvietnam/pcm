@@ -10,7 +10,8 @@
     "src/",
     "registry/",
     "adapters/",
-    "core/"
+    "core/",
+    "docs/"
   ],
   "scripts": {
     "test": "node test/index.js && node test/opencode-verify.js"
