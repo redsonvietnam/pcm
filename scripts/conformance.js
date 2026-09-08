@@ -322,6 +322,10 @@ function runConformance(pkgRoot, opts) {
       }
     }
 
+    // promote.js must exist
+    check(fs.existsSync(path.join(govDir, 'promote.js')), 'governance/promote-exists',
+      'governance/promote.js missing');
+
     try {
       const gov = require('../governance/validate');
       check(typeof gov.assessGate === 'function', 'governance/exports-assess-gate', 'assessGate missing');
@@ -372,6 +376,39 @@ function runConformance(pkgRoot, opts) {
         `expected blocked, got ${JSON.stringify(b2)}`);
     } catch (err) {
       check(false, 'governance/validation-runs', `governance validation error: ${err.message}`);
+    }
+
+    // Gate execution boundary: promote.js must export execution functions
+    try {
+      const promote = require('../governance/promote');
+      check(typeof promote.createCanonicalState === 'function', 'governance/promote/createCanonicalState',
+        'createCanonicalState missing');
+      check(typeof promote.createProposedState === 'function', 'governance/promote/createProposedState',
+        'createProposedState missing');
+      check(typeof promote.executeGate === 'function', 'governance/promote/executeGate',
+        'executeGate missing');
+      check(typeof promote.promoteState === 'function', 'governance/promote/promoteState',
+        'promoteState missing');
+
+      // Approved gate must promote
+      const c1 = promote.createCanonicalState('c/1');
+      const p1 = promote.createProposedState('P-1', 'c/1', 'test');
+      const evMap = { 'ev-1': { id: 'ev-1', provenance: 'automatically-observed', subject: 'x',
+        producedAt: '2026-09-08T10:00:00.000Z', canonicalVersion: 'c/1', expiresAt: null, invalidatedAt: null } };
+      const g1 = { id: 'G-1', subject: 'P-1', canonicalVersion: 'c/1', decision: 'approved',
+        authority: { role: 'authority', ref: 'a/r' }, decidedAt: '2026-09-08T12:00:00.000Z', evidence: ['ev-1'] };
+      const r1 = promote.promoteState(c1, p1, g1, evMap, { now: Date.parse('2026-09-08T13:00:00.000Z') });
+      check(r1.promoted === true, 'governance/promote/approved-promotes',
+        `expected promoted=true, got ${JSON.stringify(r1.promoted)}`);
+
+      // Rejected gate must NOT promote
+      const g2 = { ...g1, id: 'G-2', subject: 'P-2', decision: 'rejected', rationale: 'no' };
+      const p2 = promote.createProposedState('P-2', 'c/1', 'rejected');
+      const r2 = promote.promoteState(c1, p2, g2, evMap, { now: Date.parse('2026-09-08T13:00:00.000Z') });
+      check(r2.promoted === false, 'governance/promote/rejected-no-promote',
+        `expected promoted=false, got ${JSON.stringify(r2.promoted)}`);
+    } catch (err) {
+      check(false, 'governance/promote-runs', `governance promote error: ${err.message}`);
     }
   }
 

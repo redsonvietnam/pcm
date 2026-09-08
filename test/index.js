@@ -1426,6 +1426,235 @@ console.log('Governance: fail-closed any invalid required evidence => cannot app
 }
 
 // ================================================================
+// GOVERNANCE: gate execution (end-to-end)
+// ================================================================
+const { createCanonicalState, createProposedState, executeGate, promoteState } = require('../governance/promote');
+
+// --- helpers ---
+
+function govEvidence(id, opts) {
+  return {
+    id,
+    provenance: opts.provenance || 'independently-produced',
+    subject: opts.subject || 'test evidence',
+    producedAt: opts.producedAt || '2026-09-08T10:00:00.000Z',
+    canonicalVersion: opts.canonicalVersion || null,
+    expiresAt: opts.expiresAt || null,
+    invalidatedAt: opts.invalidatedAt || null,
+  };
+}
+
+function govGate(id, opts) {
+  const g = {
+    id,
+    subject: opts.subject || 'PROPOSAL-1',
+    canonicalVersion: opts.canonicalVersion || 'c/1',
+    decision: opts.decision || 'approved',
+    authority: { role: 'authority', ref: opts.authorityRef || 'authority/root' },
+    decidedAt: opts.decidedAt || '2026-09-08T12:00:00.000Z',
+    evidence: opts.evidence || [],
+  };
+  if (opts.decision === 'rejected') g.rationale = opts.rationale || 'not approved';
+  return g;
+}
+
+// --- HAPPY PATH ---
+
+console.log('GateExec: approved gate promotes canonical v1 -> v2');
+{
+  const canonical = createCanonicalState('c/1');
+  const proposed = createProposedState('PROPOSAL-1', 'c/1', 'test change');
+  const evidence = { 'ev-1': govEvidence('ev-1', { canonicalVersion: 'c/1' }) };
+  const gate = govGate('GATE-1', { canonicalVersion: 'c/1', decision: 'approved', evidence: ['ev-1'] });
+  const result = promoteState(canonical, proposed, gate, evidence, { now: Date.parse('2026-09-08T13:00:00.000Z') });
+  assert(result.promoted, 'approved gate promotes');
+  assert(result.canonical.version === 'PROPOSAL-1/promoted', `canonical advanced, got ${result.canonical.version}`);
+  assert(result.gateResult.decision === 'approved', 'gate decision approved');
+}
+
+// --- REJECTION ---
+
+console.log('GateExec: rejected gate does not promote');
+{
+  const canonical = createCanonicalState('c/1');
+  const proposed = createProposedState('PROPOSAL-2', 'c/1', 'rejected change');
+  const evidence = { 'ev-1': govEvidence('ev-1', { canonicalVersion: 'c/1' }) };
+  const gate = govGate('GATE-2', { canonicalVersion: 'c/1', decision: 'rejected', evidence: ['ev-1'], rationale: 'no' });
+  const result = promoteState(canonical, proposed, gate, evidence, { now: Date.parse('2026-09-08T13:00:00.000Z') });
+  assert(!result.promoted, 'rejected gate does not promote');
+  assert(result.canonical.version === 'c/1', 'canonical unchanged');
+  assert(result.gateResult.decision === 'rejected', 'gate decision rejected');
+}
+
+// --- BLOCKED: missing evidence ---
+
+console.log('GateExec: blocked gate (missing evidence) does not promote');
+{
+  const canonical = createCanonicalState('c/1');
+  const proposed = createProposedState('PROPOSAL-3', 'c/1', 'blocked change');
+  const gate = govGate('GATE-3', { canonicalVersion: 'c/1', decision: 'approved', evidence: ['ev-missing'] });
+  const result = promoteState(canonical, proposed, gate, {}, { now: Date.parse('2026-09-08T13:00:00.000Z') });
+  assert(!result.promoted, 'missing evidence blocks');
+  assert(result.canonical.version === 'c/1', 'canonical unchanged');
+  assert(result.gateResult.decision === 'blocked', 'gate decision blocked');
+}
+
+// --- BLOCKED: malformed evidence ---
+
+console.log('GateExec: blocked gate (malformed evidence) does not promote');
+{
+  const canonical = createCanonicalState('c/1');
+  const proposed = createProposedState('PROPOSAL-4', 'c/1', 'malformed');
+  const evidence = { 'ev-1': { id: 42 } };
+  const gate = govGate('GATE-4', { canonicalVersion: 'c/1', decision: 'approved', evidence: ['ev-1'] });
+  const result = promoteState(canonical, proposed, gate, evidence, { now: Date.parse('2026-09-08T13:00:00.000Z') });
+  assert(!result.promoted, 'malformed evidence blocks');
+  assert(result.canonical.version === 'c/1', 'canonical unchanged');
+  assert(result.gateResult.decision === 'blocked', 'gate decision blocked');
+}
+
+// --- BLOCKED: stale evidence ---
+
+console.log('GateExec: blocked gate (stale evidence) does not promote');
+{
+  const canonical = createCanonicalState('c/1');
+  const proposed = createProposedState('PROPOSAL-5', 'c/1', 'stale');
+  const evidence = { 'ev-1': govEvidence('ev-1', { canonicalVersion: 'c/1', expiresAt: '2026-09-08T12:00:00.000Z' }) };
+  const gate = govGate('GATE-5', { canonicalVersion: 'c/1', decision: 'approved', evidence: ['ev-1'] });
+  const result = promoteState(canonical, proposed, gate, evidence, { now: Date.parse('2026-09-08T13:00:00.000Z') });
+  assert(!result.promoted, 'stale evidence blocks');
+  assert(result.canonical.version === 'c/1', 'canonical unchanged');
+  assert(result.gateResult.decision === 'blocked', 'gate decision blocked');
+}
+
+// --- BLOCKED: invalidated evidence ---
+
+console.log('GateExec: blocked gate (invalidated evidence) does not promote');
+{
+  const canonical = createCanonicalState('c/1');
+  const proposed = createProposedState('PROPOSAL-6', 'c/1', 'invalidated');
+  const evidence = { 'ev-1': govEvidence('ev-1', { canonicalVersion: 'c/1', invalidatedAt: '2026-09-08T11:00:00.000Z' }) };
+  const gate = govGate('GATE-6', { canonicalVersion: 'c/1', decision: 'approved', evidence: ['ev-1'] });
+  const result = promoteState(canonical, proposed, gate, evidence, { now: Date.parse('2026-09-08T13:00:00.000Z') });
+  assert(!result.promoted, 'invalidated evidence blocks');
+  assert(result.canonical.version === 'c/1', 'canonical unchanged');
+  assert(result.gateResult.decision === 'blocked', 'gate decision blocked');
+}
+
+// --- BLOCKED: wrong evidence canonicalVersion ---
+
+console.log('GateExec: blocked gate (wrong evidence binding) does not promote');
+{
+  const canonical = createCanonicalState('c/1');
+  const proposed = createProposedState('PROPOSAL-7', 'c/1', 'wrong binding');
+  const evidence = { 'ev-1': govEvidence('ev-1', { canonicalVersion: 'c/OLD' }) };
+  const gate = govGate('GATE-7', { canonicalVersion: 'c/1', decision: 'approved', evidence: ['ev-1'] });
+  const result = promoteState(canonical, proposed, gate, evidence, { now: Date.parse('2026-09-08T13:00:00.000Z') });
+  assert(!result.promoted, 'wrong evidence binding blocks');
+  assert(result.canonical.version === 'c/1', 'canonical unchanged');
+  assert(result.gateResult.decision === 'blocked', 'gate decision blocked');
+}
+
+// --- BLOCKED: GATE wrong canonicalVersion ---
+
+console.log('GateExec: blocked gate (gate wrong canonicalVersion) does not promote');
+{
+  const canonical = createCanonicalState('c/1');
+  const proposed = createProposedState('PROPOSAL-8', 'c/1', 'gate wrong binding');
+  const evidence = { 'ev-1': govEvidence('ev-1', { canonicalVersion: 'c/1' }) };
+  const gate = govGate('GATE-8', { canonicalVersion: 'c/WRONG', decision: 'approved', evidence: ['ev-1'] });
+  const result = promoteState(canonical, proposed, gate, evidence, { now: Date.parse('2026-09-08T13:00:00.000Z') });
+  assert(!result.promoted, 'gate wrong canonicalVersion blocks');
+  assert(result.canonical.version === 'c/1', 'canonical unchanged');
+  assert(result.gateResult.decision === 'blocked', 'gate decision blocked');
+}
+
+// --- BLOCKED: missing canonicalVersion ---
+
+console.log('GateExec: blocked gate (missing canonicalVersion) does not promote');
+{
+  const canonical = createCanonicalState('c/1');
+  const proposed = createProposedState('PROPOSAL-9', 'c/1', 'no binding');
+  const gate = { id: 'GATE-9', subject: 'PROPOSAL-9', decision: 'approved', authority: { role: 'authority', ref: 'authority/root' }, decidedAt: '2026-09-08T12:00:00.000Z', evidence: [] };
+  const result = promoteState(canonical, proposed, gate, {}, { now: Date.parse('2026-09-08T13:00:00.000Z') });
+  assert(!result.promoted, 'missing canonicalVersion blocks');
+  assert(result.canonical.version === 'c/1', 'canonical unchanged');
+  assert(result.gateResult.decision === 'blocked', 'gate decision blocked');
+}
+
+// --- BLOCKED: invalid authority structure ---
+
+console.log('GateExec: blocked gate (invalid authority) does not promote');
+{
+  const canonical = createCanonicalState('c/1');
+  const proposed = createProposedState('PROPOSAL-10', 'c/1', 'bad authority');
+  const gate = { id: 'GATE-10', subject: 'PROPOSAL-10', canonicalVersion: 'c/1', decision: 'approved', authority: { role: 'operator', ref: 'someone' }, decidedAt: '2026-09-08T12:00:00.000Z', evidence: [] };
+  const result = promoteState(canonical, proposed, gate, {}, { now: Date.parse('2026-09-08T13:00:00.000Z') });
+  assert(!result.promoted, 'invalid authority blocks');
+  assert(result.canonical.version === 'c/1', 'canonical unchanged');
+  assert(result.gateResult.decision === 'blocked', 'gate decision blocked');
+}
+
+// --- BLOCKED: proposed references stale canonical ---
+
+console.log('GateExec: blocked when proposed references stale canonical');
+{
+  const canonical = createCanonicalState('c/2');
+  const proposed = createProposedState('PROPOSAL-11', 'c/1', 'stale ref');
+  const evidence = { 'ev-1': govEvidence('ev-1', { canonicalVersion: 'c/1' }) };
+  const gate = govGate('GATE-11', { canonicalVersion: 'c/1', decision: 'approved', evidence: ['ev-1'] });
+  const result = promoteState(canonical, proposed, gate, evidence, { now: Date.parse('2026-09-08T13:00:00.000Z') });
+  assert(!result.promoted, 'stale proposed canonical reference blocks');
+  assert(result.canonical.version === 'c/2', 'canonical unchanged');
+  assert(result.gateResult.decision === 'blocked', 'gate decision blocked');
+}
+
+// --- VERSION BINDING (race/concurrency) ---
+
+console.log('GateExec: version binding - canonical advances -> old gate blocked');
+{
+  const canonicalV1 = createCanonicalState('c/1');
+  const proposed = createProposedState('PROPOSAL-12', 'c/1', 'concurrent');
+  const evidence = { 'ev-1': govEvidence('ev-1', { canonicalVersion: 'c/1' }) };
+  const gate = govGate('GATE-12', { canonicalVersion: 'c/1', decision: 'approved', evidence: ['ev-1'] });
+
+  // Canonical advances independently to v2
+  const canonicalV2 = createCanonicalState('c/2');
+
+  // Old gate evaluated against v1, but current canonical is v2 -> blocked
+  const result = promoteState(canonicalV2, proposed, gate, evidence, {
+    now: Date.parse('2026-09-08T13:00:00.000Z'),
+  });
+  assert(!result.promoted, 'old gate blocked by advanced canonical');
+  assert(result.canonical.version === 'c/2', 'canonical unchanged at v2');
+  assert(result.gateResult.decision === 'blocked', 'gate decision blocked');
+}
+
+// --- EVIDENCE FRESHNESS boundary ---
+
+console.log('GateExec: exact expiry -> blocked');
+{
+  const canonical = createCanonicalState('c/1');
+  const proposed = createProposedState('PROPOSAL-13', 'c/1', 'boundary');
+  const evidence = { 'ev-1': govEvidence('ev-1', { canonicalVersion: 'c/1', expiresAt: '2026-09-08T12:00:00.000Z' }) };
+  const gate = govGate('GATE-13', { canonicalVersion: 'c/1', decision: 'approved', evidence: ['ev-1'] });
+  const result = promoteState(canonical, proposed, gate, evidence, { now: Date.parse('2026-09-08T12:00:00.000Z') });
+  assert(!result.promoted, 'exact expiry blocks');
+  assert(result.gateResult.decision === 'blocked', 'gate decision blocked');
+}
+
+console.log('GateExec: just before expiry -> approved');
+{
+  const canonical = createCanonicalState('c/1');
+  const proposed = createProposedState('PROPOSAL-14', 'c/1', 'just before');
+  const evidence = { 'ev-1': govEvidence('ev-1', { canonicalVersion: 'c/1', expiresAt: '2026-09-08T12:00:00.000Z' }) };
+  const gate = govGate('GATE-14', { canonicalVersion: 'c/1', decision: 'approved', evidence: ['ev-1'] });
+  const result = promoteState(canonical, proposed, gate, evidence, { now: Date.parse('2026-09-08T11:59:59.999Z') });
+  assert(result.promoted, 'just before expiry promotes');
+  assert(result.gateResult.decision === 'approved', 'gate decision approved');
+}
+
+// ================================================================
 // SUMMARY
 // ================================================================
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`);
