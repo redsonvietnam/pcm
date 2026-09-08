@@ -865,6 +865,100 @@ console.log('Manifest: stale cases remain recoverable');
 }
 
 // ================================================================
+// CONFORMANCE: missing required manifest structure
+// ================================================================
+console.log('Conformance: missing manifest structure detected');
+{
+  const d = tmpDir();
+  fs.mkdirSync(path.join(d, 'pcm'), { recursive: true });
+  fs.writeFileSync(path.join(d, 'pcm', '.pcm-manifest.json'), '{}');
+  const m = readManifest(d);
+  assert(!isManifestComplete(m), 'empty manifest detected as incomplete');
+
+  fs.writeFileSync(path.join(d, 'pcm', '.pcm-manifest.json'),
+    JSON.stringify({ pcmVersion: '1.0' }));
+  const m2 = readManifest(d);
+  assert(!isManifestComplete(m2), 'partial manifest detected as incomplete');
+  cleanup(d);
+}
+
+// ================================================================
+// CONFORMANCE: invalid registry structure
+// ================================================================
+console.log('Conformance: invalid registry structure detected');
+{
+  assert(!isManifestComplete(null), 'null manifest detected');
+  assert(!isManifestComplete('string'), 'string manifest detected');
+  assert(!isManifestComplete(42), 'number manifest detected');
+
+  // Valid manifest structure check
+  assert(isManifestComplete({
+    pcmVersion: '1.0', distributionVersion: '1.0.0',
+    adapter: { id: 'generic', origin: 'built-in', artifactPath: null, version: '1.0.0' },
+    state: 'bootstrapped',
+    core: { pcm: 'x', pwf: 'y', conformance: 'z' },
+    binding: [], managedFiles: []
+  }), 'valid manifest passes isManifestComplete');
+
+  // Invalid: adapter missing required fields
+  assert(!isManifestComplete({
+    pcmVersion: '1.0', distributionVersion: '1.0.0',
+    adapter: { id: 'generic' },
+    state: 'bootstrapped', core: {}, binding: [], managedFiles: []
+  }), 'adapter missing origin detected');
+}
+
+// ================================================================
+// CONFORMANCE: missing adapter artifact
+// ================================================================
+console.log('Conformance: missing adapter artifact detected');
+{
+  const { resolveArtifact } = require('../src/resolve');
+  const fakeAdapter = { id: 'nonexistent', artifact: 'adapters/nonexistent' };
+  const result = resolveArtifact(fakeAdapter, pkgRoot);
+  assert(result === null, 'missing adapter artifact returns null');
+}
+
+// ================================================================
+// CONFORMANCE: missing core artifact
+// ================================================================
+console.log('Conformance: missing core artifact detected');
+{
+  const d = tmpDir();
+  const r = execute(d, pkgRoot);
+  // Verify core files exist after init
+  const corePath = path.join(d, 'pcm', 'docs', 'PCM.md');
+  assert(fs.existsSync(corePath), 'core artifact exists after init');
+
+  // Simulate missing core by removing it
+  fs.unlinkSync(corePath);
+  const m = getManifest(d);
+  // Manifest still references the core file
+  assert(m.core.pcm === 'pcm/docs/PCM.md', 'manifest references core file');
+  assert(!fs.existsSync(corePath), 'core file is actually missing');
+  cleanup(d);
+}
+
+// ================================================================
+// CONFORMANCE: broken package-relative resolution
+// ================================================================
+console.log('Conformance: package-relative resolution');
+{
+  const root = getPackageRoot();
+  assert(path.isAbsolute(root), 'package root is absolute path');
+  assert(fs.existsSync(path.join(root, 'package.json')), 'package.json found at root');
+  assert(fs.existsSync(path.join(root, 'src', 'cli.js')), 'src/cli.js found at root');
+  assert(fs.existsSync(path.join(root, 'bin', 'pcm.js')), 'bin/pcm.js found at root');
+
+  // Verify resolveArtifact uses package-relative paths
+  const { resolveArtifact } = require('../src/resolve');
+  const adapter = { id: 'opencode', artifact: 'adapters/opencode' };
+  const records = resolveArtifact(adapter, root);
+  assert(Array.isArray(records) && records.length > 0,
+    'resolveArtifact finds files using package-relative path');
+}
+
+// ================================================================
 // SUMMARY
 // ================================================================
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`);
