@@ -42,6 +42,8 @@ console.log('OpenCode verification: exact global binding passes');
 
   const result = runOpencodeVerification({ packageRoot, homeDir: home, cwd });
   assert(result.status === 'PASS', `expected PASS, got ${result.status}`);
+  assert(result.aepVersion === '1.0', 'AEP version is 1.0');
+  assert(result.checks.some((c) => c.name === 'canonical-aep' && c.status === 'PASS'), 'canonical AEP is present');
   assert(result.checks.some((c) => c.name === 'global-skill' && c.status === 'PASS'), 'global skill exact match');
   assert(result.checks.some((c) => c.name === 'global-command' && c.status === 'PASS'), 'global command exact match');
   assert(result.behavioralConformance === 'SESSION-REQUIRED', 'behavior remains session-level');
@@ -57,7 +59,7 @@ console.log('OpenCode verification: detects skill drift');
   const paths = globalBindingPaths(home);
   fs.mkdirSync(path.dirname(paths.skill), { recursive: true });
   fs.mkdirSync(path.dirname(paths.command), { recursive: true });
-  fs.writeFileSync(paths.skill, Buffer.concat([canonicalSkill, Buffer.from('\nDRIFT')]))
+  fs.writeFileSync(paths.skill, Buffer.concat([canonicalSkill, Buffer.from('\nDRIFT')]));
   fs.writeFileSync(paths.command, canonicalCommand);
 
   const result = runOpencodeVerification({ packageRoot, homeDir: home, cwd });
