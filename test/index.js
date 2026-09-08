@@ -1103,6 +1103,228 @@ console.log('Conformance runner: healthy package reports CONFORMANT');
 }
 
 // ================================================================
+// GOVERNANCE: artifact contract
+// ================================================================
+const { validateEvidence, evaluateEvidence, validateGate, assessGate } = require('../governance/validate');
+
+console.log('Governance: valid evidence current -> accepted');
+{
+  const ev = {
+    id: 'ev-1',
+    provenance: 'independently-produced',
+    subject: 'build success',
+    producedAt: '2026-09-08T10:00:00.000Z',
+    canonicalVersion: 'canonical/2026-09-08/v1',
+    expiresAt: null,
+    invalidatedAt: null,
+  };
+  assert(validateEvidence(ev).valid, 'valid evidence passes schema');
+  const r = evaluateEvidence(ev, { now: Date.parse('2026-09-08T11:00:00.000Z') });
+  assert(r.accepted && r.status === 'current', `current evidence accepted, got ${r.status}`);
+}
+
+console.log('Governance: provenance categories');
+{
+  for (const p of ['self-reported', 'independently-produced', 'automatically-observed']) {
+    const ev = {
+      id: 'ev-' + p,
+      provenance: p,
+      subject: 'x',
+      producedAt: '2026-09-08T10:00:00.000Z',
+      expiresAt: null,
+      invalidatedAt: null,
+    };
+    assert(validateEvidence(ev).valid, `${p} is valid provenance`);
+  }
+  const bad = { id: 'ev-bad', provenance: 'rumored', subject: 'x', producedAt: '2026-09-08T10:00:00.000Z' };
+  assert(!validateEvidence(bad).valid, 'unknown provenance rejected');
+  assert(evaluateEvidence(bad, {}).status === 'malformed', 'bad provenance -> malformed');
+}
+
+console.log('Governance: stale evidence rejected');
+{
+  const ev = {
+    id: 'ev-stale',
+    provenance: 'self-reported',
+    subject: 'x',
+    producedAt: '2026-09-08T10:00:00.000Z',
+    expiresAt: '2026-09-08T12:00:00.000Z',
+    invalidatedAt: null,
+  };
+  const r = evaluateEvidence(ev, { now: Date.parse('2026-09-08T13:00:00.000Z') });
+  assert(!r.accepted && r.status === 'stale', `stale rejected, got ${r.status}`);
+}
+
+console.log('Governance: invalidated evidence rejected');
+{
+  const ev = {
+    id: 'ev-invalidated',
+    provenance: 'independently-produced',
+    subject: 'x',
+    producedAt: '2026-09-08T10:00:00.000Z',
+    expiresAt: null,
+    invalidatedAt: '2026-09-08T11:00:00.000Z',
+  };
+  const r = evaluateEvidence(ev, { now: Date.parse('2026-09-08T11:30:00.000Z') });
+  assert(!r.accepted && r.status === 'invalidated', `invalidated rejected, got ${r.status}`);
+}
+
+console.log('Governance: wrong canonical binding rejected');
+{
+  const ev = {
+    id: 'ev-wrong',
+    provenance: 'automatically-observed',
+    subject: 'x',
+    producedAt: '2026-09-08T10:00:00.000Z',
+    canonicalVersion: 'canonical/OLD',
+    expiresAt: null,
+    invalidatedAt: null,
+  };
+  const r = evaluateEvidence(ev, { now: Date.now(), expectedCanonicalVersion: 'canonical/NEW' });
+  assert(!r.accepted && r.status === 'wrong-binding', `wrong binding rejected, got ${r.status}`);
+
+  const missing = { id: 'ev-nobind', provenance: 'self-reported', subject: 'x', producedAt: '2026-09-08T10:00:00.000Z' };
+  const r2 = evaluateEvidence(missing, { now: Date.now(), expectedCanonicalVersion: 'canonical/NEW' });
+  assert(!r2.accepted && r2.status === 'missing-binding', `missing binding rejected, got ${r2.status}`);
+}
+
+console.log('Governance: malformed evidence rejected');
+{
+  const r = evaluateEvidence({ id: 42 }, { now: Date.now() });
+  assert(!r.accepted && r.status === 'malformed', 'malformed evidence rejected');
+}
+
+// ---- GATE ----
+
+function baseEvidence() {
+  return {
+    'ev-1': {
+      id: 'ev-1',
+      provenance: 'independently-produced',
+      subject: 'build success',
+      producedAt: '2026-09-08T10:00:00.000Z',
+      canonicalVersion: 'canonical/2026-09-08/v1',
+      expiresAt: null,
+      invalidatedAt: null,
+    },
+  };
+}
+
+function baseGate() {
+  return {
+    id: 'GATE-1',
+    subject: 'PROPOSAL-1',
+    canonicalVersion: 'canonical/2026-09-08/v1',
+    decision: 'approved',
+    authority: { role: 'authority', ref: 'authority/root' },
+    decidedAt: '2026-09-08T12:00:00.000Z',
+    evidence: ['ev-1'],
+  };
+}
+
+console.log('Governance: valid gate approvable');
+{
+  assert(validateGate(baseGate()).valid, 'valid gate passes schema');
+  const r = assessGate(baseGate(), {
+    evidenceById: baseEvidence(),
+    expectedCanonicalVersion: 'canonical/2026-09-08/v1',
+    now: Date.parse('2026-09-08T13:00:00.000Z'),
+  });
+  assert(r.gateStatus === 'approvable' && r.decision === 'approved', `approvable, got ${JSON.stringify(r)}`);
+}
+
+console.log('Governance: gate missing canonical binding -> blocked');
+{
+  const g = baseGate();
+  delete g.canonicalVersion;
+  assert(!validateGate(g).valid, 'missing canonical binding fails schema');
+  const r = assessGate(g, { evidenceById: baseEvidence(), now: Date.now() });
+  assert(r.gateStatus === 'blocked', `blocked, got ${JSON.stringify(r)}`);
+}
+
+console.log('Governance: gate mismatched canonical version -> blocked');
+{
+  const g = baseGate();
+  g.canonicalVersion = 'canonical/OLD';
+  const r = assessGate(g, {
+    evidenceById: baseEvidence(),
+    expectedCanonicalVersion: 'canonical/2026-09-08/v1',
+    now: Date.now(),
+  });
+  assert(r.gateStatus === 'blocked', `blocked, got ${JSON.stringify(r)}`);
+}
+
+console.log('Governance: gate malformed authority -> blocked');
+{
+  const g = baseGate();
+  g.authority = { role: 'operator', ref: 'someone' };
+  assert(!validateGate(g).valid, 'non-authority role fails schema');
+  const r = assessGate(g, { evidenceById: baseEvidence(), now: Date.now() });
+  assert(r.gateStatus === 'blocked', `blocked, got ${JSON.stringify(r)}`);
+}
+
+console.log('Governance: gate missing required evidence -> blocked');
+{
+  const g = baseGate();
+  g.evidence = ['ev-missing'];
+  const r = assessGate(g, { evidenceById: baseEvidence(), now: Date.now() });
+  assert(r.gateStatus === 'blocked', `blocked, got ${JSON.stringify(r)}`);
+}
+
+console.log('Governance: gate invalid decision structure -> blocked');
+{
+  const g = baseGate();
+  g.decision = 'maybe';
+  assert(!validateGate(g).valid, 'invalid decision fails schema');
+  const r = assessGate(g, { evidenceById: baseEvidence(), now: Date.now() });
+  assert(r.gateStatus === 'blocked', `blocked, got ${JSON.stringify(r)}`);
+}
+
+// ---- FAIL-CLOSED ----
+
+console.log('Governance: fail-closed any invalid required evidence => cannot approve');
+{
+  // stale evidence
+  {
+    const ev = baseEvidence();
+    ev['ev-1'].expiresAt = '2026-09-08T12:00:00.000Z';
+    const r = assessGate(baseGate(), { evidenceById: ev, now: Date.parse('2026-09-08T13:00:00.000Z') });
+    assert(r.gateStatus === 'blocked', `stale evidence blocks, got ${r.gateStatus}`);
+  }
+  // invalidated evidence
+  {
+    const ev = baseEvidence();
+    ev['ev-1'].invalidatedAt = '2026-09-08T12:30:00.000Z';
+    const r = assessGate(baseGate(), { evidenceById: ev, now: Date.parse('2026-09-08T13:00:00.000Z') });
+    assert(r.gateStatus === 'blocked', `invalidated evidence blocks, got ${r.gateStatus}`);
+  }
+  // wrong canonical binding evidence
+  {
+    const ev = baseEvidence();
+    ev['ev-1'].canonicalVersion = 'canonical/OLD';
+    const r = assessGate(baseGate(), { evidenceById: ev, now: Date.parse('2026-09-08T13:00:00.000Z') });
+    assert(r.gateStatus === 'blocked', `wrong binding blocks, got ${r.gateStatus}`);
+  }
+  // missing evidence
+  {
+    const r = assessGate(baseGate(), { evidenceById: {}, now: Date.now() });
+    assert(r.gateStatus === 'blocked', `missing evidence blocks, got ${r.gateStatus}`);
+  }
+  // rejected is distinct from blocked
+  {
+    const g = baseGate();
+    g.decision = 'rejected';
+    g.rationale = 'criteria not met';
+    const r = assessGate(g, { evidenceById: baseEvidence(), now: Date.parse('2026-09-08T13:00:00.000Z') });
+    assert(r.gateStatus === 'approvable' && r.decision === 'rejected',
+      `rejected gate is approvable-as-recorded, got ${JSON.stringify(r)}`);
+    const noRationale = baseGate();
+    noRationale.decision = 'rejected';
+    assert(!validateGate(noRationale).valid, 'rejected without rationale fails schema');
+  }
+}
+
+// ================================================================
 // SUMMARY
 // ================================================================
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`);

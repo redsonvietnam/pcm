@@ -303,6 +303,78 @@ function runConformance(pkgRoot, opts) {
       'src/cli.js not found at resolved root');
   }
 
+  // [16] Governance artifact contract (repo-level, not packaged)
+  {
+    const govDir = path.join(pkgRoot, 'governance');
+    check(fs.existsSync(path.join(govDir, 'validate.js')), 'governance/validate-exists',
+      'governance/validate.js missing');
+    check(fs.existsSync(path.join(govDir, 'ARTIFACT-CONTRACT.md')), 'governance/contract-exists',
+      'governance/ARTIFACT-CONTRACT.md missing');
+
+    // Governance module must NOT leak into the npm package payload
+    {
+      const pkgPath = path.join(pkgRoot, 'package.json');
+      if (fs.existsSync(pkgPath)) {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+        const files = Array.isArray(pkg.files) ? pkg.files : [];
+        const leaked = files.some((f) => String(f).startsWith('governance'));
+        check(!leaked, 'governance/not-packaged', 'governance/ must not be in package.json files');
+      }
+    }
+
+    try {
+      const gov = require('../governance/validate');
+      check(typeof gov.assessGate === 'function', 'governance/exports-assess-gate', 'assessGate missing');
+      check(typeof gov.validateGate === 'function', 'governance/exports-validate-gate', 'validateGate missing');
+      check(typeof gov.validateEvidence === 'function', 'governance/exports-validate-evidence', 'validateEvidence missing');
+      check(Array.isArray(gov.PROVENANCE) && gov.PROVENANCE.length === 3, 'governance/provenance-count',
+        `provenance=${JSON.stringify(gov.PROVENANCE)}`);
+
+      // Valid gate + valid evidence => approvable
+      const evidence = {
+        'ev-1': {
+          id: 'ev-1',
+          provenance: 'independently-produced',
+          subject: 'build success',
+          producedAt: '2026-09-08T10:00:00.000Z',
+          canonicalVersion: 'canonical/2026-09-08/v1',
+          expiresAt: null,
+          invalidatedAt: null,
+        },
+      };
+      const validGate = {
+        id: 'GATE-valid',
+        subject: 'PROPOSAL-1',
+        canonicalVersion: 'canonical/2026-09-08/v1',
+        decision: 'approved',
+        authority: { role: 'authority', ref: 'authority/root' },
+        decidedAt: '2026-09-08T12:00:00.000Z',
+        evidence: ['ev-1'],
+      };
+      const v = gov.assessGate(validGate, { evidenceById: evidence, now: Date.parse('2026-09-08T13:00:00.000Z') });
+      check(v.gateStatus === 'approvable', 'governance/valid-gate-approvable',
+        `expected approvable, got ${JSON.stringify(v)}`);
+
+      // Missing canonical binding => blocked
+      const noBinding = { ...validGate, canonicalVersion: undefined };
+      const b1 = gov.assessGate(noBinding, { evidenceById: evidence, now: Date.parse('2026-09-08T13:00:00.000Z') });
+      check(b1.gateStatus === 'blocked', 'governance/missing-binding-blocked',
+        `expected blocked, got ${JSON.stringify(b1)}`);
+
+      // Wrong canonical version => blocked
+      const wrongBinding = { ...validGate, canonicalVersion: 'canonical/OLD/v0' };
+      const b2 = gov.assessGate(wrongBinding, {
+        evidenceById: evidence,
+        expectedCanonicalVersion: 'canonical/2026-09-08/v1',
+        now: Date.parse('2026-09-08T13:00:00.000Z'),
+      });
+      check(b2.gateStatus === 'blocked', 'governance/wrong-binding-blocked',
+        `expected blocked, got ${JSON.stringify(b2)}`);
+    } catch (err) {
+      check(false, 'governance/validation-runs', `governance validation error: ${err.message}`);
+    }
+  }
+
   return { passed, failed, results };
 }
 
