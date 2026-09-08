@@ -21,7 +21,6 @@
   },
   "aep": {
     "path": "docs/AEP.md",
-    "version": "1.0",
-    "execution_loop": "OBSERVE → ACT → OBSERVE → VERIFY → ADAPT → ACT → ..."
+    "version": "1.0"
   }
 }
