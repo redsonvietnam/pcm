@@ -6,10 +6,11 @@
 
 ## 1. Purpose
 
-This protocol answers two different questions:
+This protocol answers three different questions:
 
 1. Is the expected PCM OpenCode binding installed on this machine?
-2. Did the current OpenCode session actually operate under that binding?
+2. Did the current OpenCode session actually load that binding?
+3. Did the session behave according to PCM/PWF while using an agentic execution surface?
 
 These questions require different evidence.
 
@@ -21,6 +22,7 @@ The OpenCode binding has one stable identity:
 - Binding version: `1.0`
 - Skill: `adapters/opencode/SKILL.md`
 - Command: `adapters/opencode/commands/pcm.md`
+- Agentic Execution Profile: `docs/AEP.md` v1.0
 
 The authoritative distribution also publishes `adapters/opencode/PCM-BINDING.json` with SHA-256 fingerprints for the skill and command.
 
@@ -55,9 +57,23 @@ Project-local copies, when present, are checked too.
 
 The OpenCode session must explicitly load `pcm-v1` before task execution.
 
-The `/pcm` command requires the agent to report the binding ID, version, source, scope, discovery result, and load result.
+The `/pcm` command requires the agent to report the binding ID, version, source, scope, AEP version, discovery result, and load result.
 
-### Level D — Behavioral Conformance
+### Level D — Agentic Execution
+
+The session reports the material execution surface and capabilities actually available to it.
+
+For material work, distinguish:
+
+```text
+Capability → Action → Evidence
+```
+
+A capability being available is not evidence that an action occurred.
+
+AEP permits multiple tool calls and verification loops while the actor remains within TASK scope.
+
+### Level E — Behavioral Conformance
 
 The session must demonstrate observable PCM behavior, including:
 
@@ -97,6 +113,8 @@ Canonical PCM repository
         |
         +--> adapters/opencode/commands/pcm.md
         |
+        +--> docs/AEP.md
+        |
         +--> PCM-BINDING.json
         |
         +--> HOME install
@@ -112,6 +130,6 @@ Canonical PCM repository
 
 ## 7. Security Boundary
 
-The verifier checks file identity only. It does not inspect or store secrets and does not prove machine security, runtime equivalence, or model behavior.
+The verifier checks file identity and AEP presence. It does not inspect or store secrets and does not prove machine security, runtime equivalence, or model behavior.
 
 PCM governance remains defined by `core/PCM.md`, `core/PWF.md`, and `docs/CONFORMANCE.md`.
