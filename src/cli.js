@@ -9,6 +9,7 @@ const { resolveArtifact } = require('./resolve');
 const { createManifest, readManifest, writeManifest } = require('./manifest');
 const { installCoreFiles, installBindingFiles, getCoreTargetPaths } = require('./install');
 const { checkIdempotency, preserveInitializedAt } = require('./idempotency');
+const { runOpencodeVerification, formatVerification } = require('./opencode-verify');
 
 const PCM_VERSION = '1.0';
 const DISTRIBUTION_VERSION = '1.0.0';
@@ -19,6 +20,17 @@ function getPackageRoot() {
 
 function parseArgs(argv) {
   const args = argv.slice(2);
+
+  if (args[0] === 'verify-opencode') {
+    if (args.length > 1) {
+      return {
+        error: 'verify-opencode accepts no positional arguments',
+        recovery: 'Run: npx pcm verify-opencode',
+      };
+    }
+    return { command: 'verify-opencode' };
+  }
+
   const positional = [];
   const flags = [];
 
@@ -153,7 +165,6 @@ function execute(targetDir, packageRoot) {
       return { exitCode: 1, error: `Failed to write manifest: ${err.message}`, recovery: 'Check directory permissions' };
     }
   }
-  // else status === 'current' → no rewrite needed
 
   const lines = [
     'PCM initialized successfully.',
@@ -175,6 +186,12 @@ function run(argv) {
     console.error(`Error: ${parsed.error}`);
     console.error(`Recovery: ${parsed.recovery}`);
     process.exit(1);
+  }
+
+  if (parsed.command === 'verify-opencode') {
+    const verification = runOpencodeVerification({ packageRoot: getPackageRoot() });
+    console.log(formatVerification(verification));
+    process.exit(verification.status === 'PASS' || verification.status === 'PASS-WITH-WARNINGS' ? 0 : 1);
   }
 
   const result = execute(parsed.target, getPackageRoot());
