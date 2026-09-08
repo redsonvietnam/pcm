@@ -959,6 +959,150 @@ console.log('Conformance: package-relative resolution');
 }
 
 // ================================================================
+// CONFORMANCE RUNNER: invalid registry detection
+// ================================================================
+console.log('Conformance runner: invalid registry detected');
+{
+  const { runConformance } = require('../scripts/conformance');
+  const fixture = tmpDir();
+  try {
+    // Create a minimal valid package structure
+    fs.mkdirSync(path.join(fixture, 'bin'), { recursive: true });
+    fs.mkdirSync(path.join(fixture, 'src'), { recursive: true });
+    fs.mkdirSync(path.join(fixture, 'registry'), { recursive: true });
+    fs.mkdirSync(path.join(fixture, 'adapters', 'opencode'), { recursive: true });
+    fs.mkdirSync(path.join(fixture, 'core'), { recursive: true });
+    fs.writeFileSync(path.join(fixture, 'package.json'),
+      JSON.stringify({ name: 'test', version: '1.0.0', bin: { pcm: 'bin/pcm.js' }, files: ['bin/'] }));
+    fs.writeFileSync(path.join(fixture, 'bin', 'pcm.js'), '#!/usr/bin/env node\nrequire("../src/cli")');
+    fs.writeFileSync(path.join(fixture, 'src', 'cli.js'), 'module.exports = {}');
+    fs.writeFileSync(path.join(fixture, 'core', 'PCM.md'), '# PCM');
+    fs.writeFileSync(path.join(fixture, 'core', 'PWF.md'), '# PWF');
+    fs.writeFileSync(path.join(fixture, 'core', 'CONFORMANCE.md'), '# CONFORMANCE');
+    fs.writeFileSync(path.join(fixture, 'adapters', 'opencode', 'SKILL.md'), '# SKILL');
+
+    // Break: invalid registry JSON
+    fs.writeFileSync(path.join(fixture, 'registry', 'pcm-adapters.json'), '{invalid json');
+
+    const result = runConformance(fixture, { execRoot: pkgRoot });
+    assert(result.failed > 0, 'runner detects invalid registry',
+      `expected failures, got ${result.failed}`);
+    const registryParse = result.results.find(r => r.id === 'registry/parse');
+    assert(registryParse && !registryParse.pass, 'registry/parse failed',
+      'registry parse failure not detected');
+  } finally {
+    cleanup(fixture);
+  }
+}
+
+// ================================================================
+// CONFORMANCE RUNNER: missing adapter artifact detection
+// ================================================================
+console.log('Conformance runner: missing adapter artifact detected');
+{
+  const { runConformance } = require('../scripts/conformance');
+  const fixture = tmpDir();
+  try {
+    // Create a minimal valid package structure
+    fs.mkdirSync(path.join(fixture, 'bin'), { recursive: true });
+    fs.mkdirSync(path.join(fixture, 'src'), { recursive: true });
+    fs.mkdirSync(path.join(fixture, 'registry'), { recursive: true });
+    fs.mkdirSync(path.join(fixture, 'adapters', 'opencode'), { recursive: true });
+    fs.mkdirSync(path.join(fixture, 'core'), { recursive: true });
+    fs.writeFileSync(path.join(fixture, 'package.json'),
+      JSON.stringify({ name: 'test', version: '1.0.0', bin: { pcm: 'bin/pcm.js' }, files: ['bin/'] }));
+    fs.writeFileSync(path.join(fixture, 'bin', 'pcm.js'), '#!/usr/bin/env node\nrequire("../src/cli")');
+    fs.writeFileSync(path.join(fixture, 'src', 'cli.js'), 'module.exports = {}');
+    fs.writeFileSync(path.join(fixture, 'core', 'PCM.md'), '# PCM');
+    fs.writeFileSync(path.join(fixture, 'core', 'PWF.md'), '# PWF');
+    fs.writeFileSync(path.join(fixture, 'core', 'CONFORMANCE.md'), '# CONFORMANCE');
+    fs.writeFileSync(path.join(fixture, 'adapters', 'opencode', 'SKILL.md'), '# SKILL');
+
+    // Break: catalog references artifact path that doesn't exist
+    fs.writeFileSync(path.join(fixture, 'registry', 'pcm-adapters.json'), JSON.stringify({
+      version: '1.0',
+      defaultAdapter: 'opencode',
+      adapters: [
+        { id: 'opencode', name: 'OpenCode', platforms: ['*'], shells: ['*'],
+          requires: null, tested: true, priority: 1, artifact: 'adapters/opencode' },
+        { id: 'generic', name: 'Generic', platforms: ['*'], shells: ['*'],
+          requires: null, tested: true, priority: 999, artifact: null },
+      ]
+    }));
+    // Remove the adapter artifact directory to simulate missing
+    fs.rmSync(path.join(fixture, 'adapters', 'opencode'), { recursive: true, force: true });
+
+    const result = runConformance(fixture, { execRoot: pkgRoot });
+    assert(result.failed > 0, 'runner detects missing adapter artifact',
+      `expected failures, got ${result.failed}`);
+    const loadFail = result.results.find(r => r.id === 'adapter/load' && !r.pass);
+    assert(loadFail !== undefined, 'adapter/load failure detected',
+      'missing adapter artifact not detected via catalog validation');
+  } finally {
+    cleanup(fixture);
+  }
+}
+
+// ================================================================
+// CONFORMANCE RUNNER: missing core artifact detection
+// ================================================================
+console.log('Conformance runner: missing core artifact detected');
+{
+  const { runConformance } = require('../scripts/conformance');
+  const fixture = tmpDir();
+  try {
+    // Create a minimal valid package structure but missing core files
+    fs.mkdirSync(path.join(fixture, 'bin'), { recursive: true });
+    fs.mkdirSync(path.join(fixture, 'src'), { recursive: true });
+    fs.mkdirSync(path.join(fixture, 'registry'), { recursive: true });
+    fs.mkdirSync(path.join(fixture, 'adapters', 'opencode'), { recursive: true });
+    fs.mkdirSync(path.join(fixture, 'core'), { recursive: true });
+    fs.writeFileSync(path.join(fixture, 'package.json'),
+      JSON.stringify({ name: 'test', version: '1.0.0', bin: { pcm: 'bin/pcm.js' }, files: ['bin/'] }));
+    fs.writeFileSync(path.join(fixture, 'bin', 'pcm.js'), '#!/usr/bin/env node\nrequire("../src/cli")');
+    fs.writeFileSync(path.join(fixture, 'src', 'cli.js'), 'module.exports = {}');
+    fs.writeFileSync(path.join(fixture, 'adapters', 'opencode', 'SKILL.md'), '# SKILL');
+    fs.writeFileSync(path.join(fixture, 'registry', 'pcm-adapters.json'), JSON.stringify({
+      version: '1.0',
+      defaultAdapter: 'opencode',
+      adapters: [
+        { id: 'opencode', name: 'OpenCode', platforms: ['*'], shells: ['*'],
+          requires: null, tested: true, priority: 1, artifact: 'adapters/opencode' },
+        { id: 'generic', name: 'Generic', platforms: ['*'], shells: ['*'],
+          requires: null, tested: true, priority: 999, artifact: null },
+      ]
+    }));
+    // core/ exists but is empty — all 3 core files missing
+    // (no PCM.md, no PWF.md, no CONFORMANCE.md)
+
+    const result = runConformance(fixture, { execRoot: pkgRoot });
+    assert(result.failed > 0, 'runner detects missing core artifacts',
+      `expected failures, got ${result.failed}`);
+    const pcmCheck = result.results.find(r => r.id === 'core/PCM.md' && !r.pass);
+    const pwfCheck = result.results.find(r => r.id === 'core/PWF.md' && !r.pass);
+    const confCheck = result.results.find(r => r.id === 'core/CONFORMANCE.md' && !r.pass);
+    assert(pcmCheck !== undefined, 'core/PCM.md missing detected');
+    assert(pwfCheck !== undefined, 'core/PWF.md missing detected');
+    assert(confCheck !== undefined, 'core/CONFORMANCE.md missing detected');
+  } finally {
+    cleanup(fixture);
+  }
+}
+
+// ================================================================
+// CONFORMANCE RUNNER: healthy package still reports CONFORMANT
+// ================================================================
+console.log('Conformance runner: healthy package reports CONFORMANT');
+{
+  const { runConformance } = require('../scripts/conformance');
+  const result = runConformance(pkgRoot);
+  assert(result.failed === 0, 'healthy package has 0 failures',
+    `got ${result.failed} failures: ${result.results.filter(r => !r.pass).map(r => r.id).join(', ')}`);
+  assert(result.passed > 50, 'healthy package has many passes',
+    `got ${result.passed} passes`);
+}
+
+// ================================================================
 // SUMMARY
 // ================================================================
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`);
