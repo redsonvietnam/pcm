@@ -8,6 +8,7 @@ const path = require('path');
 const BINDING_MANIFEST = path.join('adapters', 'opencode', 'PCM-BINDING.json');
 const CANONICAL_SKILL = path.join('adapters', 'opencode', 'SKILL.md');
 const CANONICAL_COMMAND = path.join('adapters', 'opencode', 'commands', 'pcm.md');
+const CANONICAL_AEP = path.join('docs', 'AEP.md');
 
 function sha256File(filePath) {
   return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
@@ -51,6 +52,25 @@ function fileCheck(filePath, expectedHash) {
   return { status: 'PASS', path: filePath, reason: 'exact-match', actualHash };
 }
 
+function verifyAep(packageRoot, result) {
+  const aepPath = path.join(packageRoot, CANONICAL_AEP);
+  if (!fs.existsSync(aepPath)) {
+    result.status = 'FAIL';
+    result.checks.push({ status: 'FAIL', name: 'canonical-aep', path: aepPath, reason: 'missing' });
+    return;
+  }
+
+  const content = fs.readFileSync(aepPath, 'utf8');
+  const versionMatch = /\*\*Version:\*\*\s+1\.0/m.test(content);
+  result.checks.push({
+    status: versionMatch ? 'PASS' : 'FAIL',
+    name: 'canonical-aep',
+    path: aepPath,
+    reason: versionMatch ? 'AEP v1.0 present' : 'AEP v1.0 declaration missing',
+  });
+  if (!versionMatch) result.status = 'FAIL';
+}
+
 function runOpencodeVerification({ packageRoot, cwd = process.cwd(), homeDir = os.homedir() } = {}) {
   const root = packageRoot || path.resolve(__dirname, '..');
   const manifestPath = path.join(root, BINDING_MANIFEST);
@@ -60,6 +80,7 @@ function runOpencodeVerification({ packageRoot, cwd = process.cwd(), homeDir = o
   const result = {
     bindingId: 'pcm-v1',
     bindingVersion: '1.0',
+    aepVersion: '1.0',
     status: 'PASS',
     checks: [],
     warnings: [],
@@ -78,15 +99,20 @@ function runOpencodeVerification({ packageRoot, cwd = process.cwd(), homeDir = o
   const identityOk =
     manifest.binding_id === result.bindingId &&
     manifest.binding_version === result.bindingVersion &&
-    manifest.adapter === 'opencode';
+    manifest.adapter === 'opencode' &&
+    manifest.aep &&
+    manifest.aep.version === result.aepVersion;
   result.checks.push({
     status: identityOk ? 'PASS' : 'FAIL',
     name: 'binding-identity',
     bindingId: manifest.binding_id,
     bindingVersion: manifest.binding_version,
     adapter: manifest.adapter,
+    aepVersion: manifest.aep && manifest.aep.version,
   });
   if (!identityOk) result.status = 'FAIL';
+
+  verifyAep(root, result);
 
   for (const [name, filePath, expectedHash] of [
     ['canonical-skill', canonicalSkillPath, manifest.skill && manifest.skill.sha256],
@@ -151,6 +177,7 @@ function formatVerification(result) {
   const lines = [
     `PCM OpenCode Verification: ${result.status}`,
     `Binding: ${result.bindingId} v${result.bindingVersion}`,
+    `AEP: v${result.aepVersion}`,
     '',
   ];
 
@@ -179,6 +206,7 @@ module.exports = {
   BINDING_MANIFEST,
   CANONICAL_SKILL,
   CANONICAL_COMMAND,
+  CANONICAL_AEP,
   globalBindingPaths,
   projectBindingPaths,
   runOpencodeVerification,
