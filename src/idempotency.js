@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { readManifest, manifestsMatch } = require('./manifest');
+const { readManifest, manifestsMatch, isManifestComplete } = require('./manifest');
 
 const GOVERNANCE_PREFIXES = ['docs/gates/', 'pcm/workstreams/'];
 
@@ -35,6 +35,10 @@ function fileContentMatches(filePath, expectedContent) {
 function checkIdempotency(existingManifest, newManifest, targetDir) {
   if (!existingManifest) {
     return { status: 'first-init' };
+  }
+
+  if (!isManifestComplete(existingManifest)) {
+    return { status: 'stale', existingManifest };
   }
 
   if (manifestsMatch(existingManifest, newManifest)) {

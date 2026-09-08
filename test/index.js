@@ -8,7 +8,7 @@ const { execute, parseArgs, getPackageRoot } = require('../src/cli');
 const { detect } = require('../src/detect');
 const { loadCatalog } = require('../src/catalog');
 const { select, capabilitiesSatisfied, isTrusted } = require('../src/select');
-const { createManifest, readManifest, writeManifest, manifestsMatch } = require('../src/manifest');
+const { createManifest, readManifest, writeManifest, manifestsMatch, isManifestComplete } = require('../src/manifest');
 const { checkIdempotency } = require('../src/idempotency');
 
 let passed = 0;
@@ -583,6 +583,285 @@ console.log('Determinism: identical output');
   assert(JSON.stringify(m1.binding) === JSON.stringify(m2.binding), 'same manifest binding');
   cleanup(d1);
   cleanup(d2);
+}
+
+// ================================================================
+// MANIFEST: valid JSON but missing adapter object
+// ================================================================
+console.log('Manifest: missing adapter object');
+{
+  const d = tmpDir();
+  execute(d, pkgRoot);
+  const m1 = getManifest(d);
+
+  // Tamper: remove adapter entirely
+  delete m1.adapter;
+  writeManifest(d, m1);
+
+  const r = execute(d, pkgRoot);
+  assert(r.exitCode === 0, 'missing adapter does not cause crash');
+  const m2 = getManifest(d);
+  assert(m2.adapter && m2.adapter.id, 'manifest regenerated with adapter');
+  cleanup(d);
+}
+
+// ================================================================
+// MANIFEST: valid JSON but missing adapter.id
+// ================================================================
+console.log('Manifest: missing adapter.id');
+{
+  const d = tmpDir();
+  execute(d, pkgRoot);
+  const m1 = getManifest(d);
+
+  // Tamper: remove adapter.id
+  delete m1.adapter.id;
+  writeManifest(d, m1);
+
+  const r = execute(d, pkgRoot);
+  assert(r.exitCode === 0, 'missing adapter.id does not cause crash');
+  const m2 = getManifest(d);
+  assert(typeof m2.adapter.id === 'string' && m2.adapter.id.length > 0,
+    'manifest regenerated with adapter.id');
+  cleanup(d);
+}
+
+// ================================================================
+// MANIFEST: valid JSON but missing adapter.artifactPath
+// ================================================================
+console.log('Manifest: missing adapter.artifactPath');
+{
+  const d = tmpDir();
+  execute(d, pkgRoot);
+  const m1 = getManifest(d);
+
+  // Tamper: remove adapter.artifactPath
+  delete m1.adapter.artifactPath;
+  writeManifest(d, m1);
+
+  const r = execute(d, pkgRoot);
+  assert(r.exitCode === 0, 'missing adapter.artifactPath does not cause crash');
+  const m2 = getManifest(d);
+  assert('artifactPath' in m2.adapter, 'manifest regenerated with artifactPath');
+  cleanup(d);
+}
+
+// ================================================================
+// MANIFEST: valid JSON but missing state
+// ================================================================
+console.log('Manifest: missing state');
+{
+  const d = tmpDir();
+  execute(d, pkgRoot);
+  const m1 = getManifest(d);
+
+  // Tamper: remove state
+  delete m1.state;
+  writeManifest(d, m1);
+
+  const r = execute(d, pkgRoot);
+  assert(r.exitCode === 0, 'missing state does not cause crash');
+  const m2 = getManifest(d);
+  assert(m2.state === 'bootstrapped', 'manifest regenerated with state');
+  cleanup(d);
+}
+
+// ================================================================
+// MANIFEST: valid JSON but missing core
+// ================================================================
+console.log('Manifest: missing core');
+{
+  const d = tmpDir();
+  execute(d, pkgRoot);
+  const m1 = getManifest(d);
+
+  // Tamper: remove core
+  delete m1.core;
+  writeManifest(d, m1);
+
+  const r = execute(d, pkgRoot);
+  assert(r.exitCode === 0, 'missing core does not cause crash');
+  const m2 = getManifest(d);
+  assert(m2.core && m2.core.pcm, 'manifest regenerated with core');
+  cleanup(d);
+}
+
+// ================================================================
+// MANIFEST: valid JSON but missing binding
+// ================================================================
+console.log('Manifest: missing binding');
+{
+  const d = tmpDir();
+  execute(d, pkgRoot);
+  const m1 = getManifest(d);
+
+  // Tamper: remove binding
+  delete m1.binding;
+  writeManifest(d, m1);
+
+  const r = execute(d, pkgRoot);
+  assert(r.exitCode === 0, 'missing binding does not cause crash');
+  const m2 = getManifest(d);
+  assert(Array.isArray(m2.binding), 'manifest regenerated with binding array');
+  cleanup(d);
+}
+
+// ================================================================
+// MANIFEST: valid JSON but missing managedFiles
+// ================================================================
+console.log('Manifest: missing managedFiles');
+{
+  const d = tmpDir();
+  execute(d, pkgRoot);
+  const m1 = getManifest(d);
+
+  // Tamper: remove managedFiles
+  delete m1.managedFiles;
+  writeManifest(d, m1);
+
+  const r = execute(d, pkgRoot);
+  assert(r.exitCode === 0, 'missing managedFiles does not cause crash');
+  const m2 = getManifest(d);
+  assert(Array.isArray(m2.managedFiles), 'manifest regenerated with managedFiles array');
+  cleanup(d);
+}
+
+// ================================================================
+// MANIFEST: valid JSON but empty object
+// ================================================================
+console.log('Manifest: empty JSON object');
+{
+  const d = tmpDir();
+  fs.mkdirSync(path.join(d, 'pcm'), { recursive: true });
+  fs.writeFileSync(path.join(d, 'pcm', '.pcm-manifest.json'), '{}');
+
+  const r = execute(d, pkgRoot);
+  assert(r.exitCode === 0, 'empty JSON object does not cause crash');
+  const m = getManifest(d);
+  assert(m.adapter && m.adapter.id, 'manifest regenerated with full structure');
+  cleanup(d);
+}
+
+// ================================================================
+// MANIFEST: malformed JSON
+// ================================================================
+console.log('Manifest: malformed JSON');
+{
+  const d = tmpDir();
+  fs.mkdirSync(path.join(d, 'pcm'), { recursive: true });
+  fs.writeFileSync(path.join(d, 'pcm', '.pcm-manifest.json'), '{invalid json!!!');
+
+  const r = execute(d, pkgRoot);
+  assert(r.exitCode === 0, 'malformed JSON does not cause crash');
+  const m = getManifest(d);
+  assert(m.adapter && m.adapter.id, 'manifest regenerated after malformed JSON');
+  cleanup(d);
+}
+
+// ================================================================
+// MANIFEST: isManifestComplete validation
+// ================================================================
+console.log('Manifest: isManifestComplete');
+{
+  assert(!isManifestComplete(null), 'null is not complete');
+  assert(!isManifestComplete(undefined), 'undefined is not complete');
+  assert(!isManifestComplete('string'), 'string is not complete');
+  assert(!isManifestComplete({}), 'empty object is not complete');
+
+  // Missing adapter
+  assert(!isManifestComplete({
+    pcmVersion: '1.0', distributionVersion: '1.0.0',
+    state: 'bootstrapped', core: {}, binding: [], managedFiles: []
+  }), 'missing adapter is not complete');
+
+  // Missing adapter.id
+  assert(!isManifestComplete({
+    pcmVersion: '1.0', distributionVersion: '1.0.0',
+    adapter: { origin: 'built-in' },
+    state: 'bootstrapped', core: {}, binding: [], managedFiles: []
+  }), 'missing adapter.id is not complete');
+
+  // Missing state
+  assert(!isManifestComplete({
+    pcmVersion: '1.0', distributionVersion: '1.0.0',
+    adapter: { id: 'generic', origin: 'built-in' },
+    core: {}, binding: [], managedFiles: []
+  }), 'missing state is not complete');
+
+  // Missing core
+  assert(!isManifestComplete({
+    pcmVersion: '1.0', distributionVersion: '1.0.0',
+    adapter: { id: 'generic', origin: 'built-in' },
+    state: 'bootstrapped', binding: [], managedFiles: []
+  }), 'missing core is not complete');
+
+  // Missing binding (not array)
+  assert(!isManifestComplete({
+    pcmVersion: '1.0', distributionVersion: '1.0.0',
+    adapter: { id: 'generic', origin: 'built-in' },
+    state: 'bootstrapped', core: {}, managedFiles: []
+  }), 'missing binding is not complete');
+
+  // Full valid manifest
+  assert(isManifestComplete({
+    pcmVersion: '1.0', distributionVersion: '1.0.0',
+    adapter: { id: 'generic', origin: 'built-in', artifactPath: null, version: '1.0.0' },
+    state: 'bootstrapped',
+    core: { pcm: 'pcm/docs/PCM.md', pwf: 'pcm/docs/PWF.md', conformance: 'pcm/docs/CONFORMANCE.md' },
+    binding: [],
+    managedFiles: []
+  }), 'complete manifest passes');
+}
+
+// ================================================================
+// MANIFEST: existing manual-modification case remains preserved
+// ================================================================
+console.log('Manifest: manual modification after structural hardening');
+{
+  const d = tmpDir();
+  execute(d, pkgRoot);
+  const m1 = getManifest(d);
+
+  // Tamper with adapter.version (non-structural user edit)
+  m1.adapter.version = 'user-custom-version';
+  writeManifest(d, m1);
+
+  const r = execute(d, pkgRoot);
+  assert(r.exitCode === 0, 'manual modification does not cause error');
+  const m2 = getManifest(d);
+  assert(m2.adapter.version === 'user-custom-version', 'manual modification preserved');
+  cleanup(d);
+}
+
+// ================================================================
+// MANIFEST: existing stale-manifest cases remain recoverable
+// ================================================================
+console.log('Manifest: stale cases remain recoverable');
+{
+  const d = tmpDir();
+  execute(d, pkgRoot);
+  const m1 = getManifest(d);
+  const originalAdapter = m1.adapter.id;
+
+  // Case 1: wrong adapter
+  m1.adapter.id = 'wrong-adapter';
+  writeManifest(d, m1);
+  let r = execute(d, pkgRoot);
+  let m2 = getManifest(d);
+  assert(r.exitCode === 0, 'wrong adapter does not cause error');
+  assert(m2.adapter.id === originalAdapter, 'wrong adapter corrected');
+
+  // Case 2: wrong version
+  execute(d, pkgRoot);
+  m2 = getManifest(d);
+  m2.distributionVersion = '0.0.1';
+  writeManifest(d, m2);
+  r = execute(d, pkgRoot);
+  const m3 = getManifest(d);
+  assert(r.exitCode === 0, 'wrong version does not cause error');
+  assert(m3.distributionVersion === '1.0.0', 'wrong version corrected');
+
+  cleanup(d);
 }
 
 // ================================================================

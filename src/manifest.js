@@ -48,6 +48,7 @@ function writeManifest(targetDir, manifest) {
 
 function manifestsMatch(a, b) {
   if (!a || !b) return false;
+  if (!a.adapter || !b.adapter) return false;
   return (
     a.pcmVersion === b.pcmVersion &&
     a.distributionVersion === b.distributionVersion &&
@@ -61,4 +62,19 @@ function manifestsMatch(a, b) {
   );
 }
 
-module.exports = { createManifest, readManifest, writeManifest, manifestsMatch, MANIFEST_PATH };
+function isManifestComplete(manifest) {
+  if (!manifest || typeof manifest !== 'object') return false;
+  if (typeof manifest.pcmVersion !== 'string') return false;
+  if (typeof manifest.distributionVersion !== 'string') return false;
+  if (!manifest.adapter || typeof manifest.adapter !== 'object') return false;
+  if (typeof manifest.adapter.id !== 'string') return false;
+  if (typeof manifest.adapter.origin !== 'string') return false;
+  if (!('artifactPath' in manifest.adapter)) return false;
+  if (typeof manifest.state !== 'string') return false;
+  if (!manifest.core || typeof manifest.core !== 'object') return false;
+  if (!Array.isArray(manifest.binding)) return false;
+  if (!Array.isArray(manifest.managedFiles)) return false;
+  return true;
+}
+
+module.exports = { createManifest, readManifest, writeManifest, manifestsMatch, isManifestComplete, MANIFEST_PATH };
