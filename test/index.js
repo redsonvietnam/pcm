@@ -1740,6 +1740,171 @@ console.log('GateExec: stale/invalidated evidence semantics unchanged');
 }
 
 // ================================================================
+// PAIRFLOW SCENARIO: real governance flow
+// ================================================================
+console.log('');
+console.log('PAIRFLOW-SCENARIO-01: Real governance scenario');
+console.log('---------------------------------------------');
+
+// --- PHASE 1: Workstream + Task representation ---
+const WORKSTREAM = {
+  id: 'WS-governance-hardening',
+  description: 'Strengthen PCM governance model with artifact contracts and execution flows',
+  status: 'active',
+  createdAt: '2026-09-08T00:00:00.000Z',
+};
+
+const TASK = {
+  id: 'TASK-add-governance-scenarios',
+  workstream: WORKSTREAM.id,
+  description: 'Add governance scenario documentation to governance/ directory',
+  assignee: 'C1',
+  status: 'completed',
+  completedAt: '2026-09-08T10:00:00.000Z',
+};
+
+console.log('Scenario: workstream=' + WORKSTREAM.id + ', task=' + TASK.id);
+
+// --- PHASE 2: Proposed State ---
+const scenarioCanonicalV1 = createCanonicalState('pcm/v1.0');
+const proposedChange = createProposedState(
+  TASK.id,
+  scenarioCanonicalV1.version,
+  'Add GOVERNANCE-SCENARIOS.md documenting real governance flow examples'
+);
+
+console.log('Scenario: proposed=' + proposedChange.id + ', canonical before=' + scenarioCanonicalV1.version);
+assert(proposedChange.canonicalVersion === scenarioCanonicalV1.version, 'proposal binds to current canonical');
+
+// --- PHASE 3: Execution result (distinct from approval) ---
+const executionResult = {
+  taskId: TASK.id,
+  result: 'completed',
+  filesChanged: ['governance/GOVERNANCE-SCENARIOS.md'],
+  linesAdded: 47,
+  completedAt: '2026-09-08T10:00:00.000Z',
+};
+
+console.log('Scenario: execution=' + executionResult.result + ' (NOT approval)');
+assert(executionResult.result === 'completed', 'execution completed');
+// Key distinction: execution completed != approved
+// This must remain visible throughout the scenario
+
+// --- PHASE 4: Evidence records (two different provenance classes) ---
+const scenarioEvidence = {
+  'ev-self-001': {
+    id: 'ev-self-001',
+    provenance: 'self-reported',
+    subject: 'C1 reports implementation completed for ' + TASK.id,
+    producedAt: '2026-09-08T10:05:00.000Z',
+    canonicalVersion: scenarioCanonicalV1.version,
+    expiresAt: null,
+    invalidatedAt: null,
+  },
+  'ev-auto-001': {
+    id: 'ev-auto-001',
+    provenance: 'automatically-observed',
+    subject: 'conformance runner reports CONFORMANT after implementation',
+    producedAt: '2026-09-08T10:10:00.000Z',
+    canonicalVersion: scenarioCanonicalV1.version,
+    expiresAt: null,
+    invalidatedAt: null,
+  },
+};
+
+console.log('Scenario: evidence count=' + Object.keys(scenarioEvidence).length +
+  ', provenance classes=[' +
+  [...new Set(Object.values(scenarioEvidence).map(e => e.provenance))].join(', ') + ']');
+
+// Verify evidence binding
+for (const ev of Object.values(scenarioEvidence)) {
+  assert(ev.canonicalVersion === scenarioCanonicalV1.version,
+    'evidence ' + ev.id + ' binds to canonical ' + scenarioCanonicalV1.version);
+}
+
+// --- PHASE 5: GATE ---
+const scenarioGate = {
+  id: 'GATE-scenario-001',
+  subject: TASK.id,
+  canonicalVersion: scenarioCanonicalV1.version,
+  decision: 'approved',
+  authority: { role: 'authority', ref: 'authority/root' },
+  decidedAt: '2026-09-08T12:00:00.000Z',
+  evidence: ['ev-self-001', 'ev-auto-001'],
+};
+
+console.log('Scenario: gate=' + scenarioGate.id + ', decision=' + scenarioGate.decision);
+
+// --- PHASE 6: Promotion ---
+const promotionResult = promoteState(
+  scenarioCanonicalV1,
+  proposedChange,
+  scenarioGate,
+  scenarioEvidence,
+  { now: Date.parse('2026-09-08T13:00:00.000Z') }
+);
+
+console.log('Scenario: promoted=' + promotionResult.promoted +
+  ', canonical after=' + promotionResult.canonical.version);
+
+assert(promotionResult.promoted === true, 'approved gate promotes canonical');
+assert(promotionResult.gateResult.decision === 'approved', 'gate decision approved');
+assert(promotionResult.canonical.version !== scenarioCanonicalV1.version,
+  'canonical state advanced from ' + scenarioCanonicalV1.version);
+assert(promotionResult.canonical.version === TASK.id + '/promoted',
+  'canonical promoted to ' + TASK.id + '/promoted');
+
+// --- PHASE 7: Negative replay (stale evidence) ---
+console.log('');
+console.log('PAIRFLOW-SCENARIO-01: Negative replay (stale evidence)');
+console.log('---------------------------------------------');
+
+const negativeEvidence = {
+  'ev-stale-001': {
+    id: 'ev-stale-001',
+    provenance: 'automatically-observed',
+    subject: 'conformance runner report (expired)',
+    producedAt: '2026-09-08T09:00:00.000Z',
+    canonicalVersion: scenarioCanonicalV1.version,
+    expiresAt: '2026-09-08T10:00:00.000Z',
+    invalidatedAt: null,
+  },
+};
+
+const negativeGate = {
+  id: 'GATE-scenario-002',
+  subject: TASK.id,
+  canonicalVersion: scenarioCanonicalV1.version,
+  decision: 'approved',
+  authority: { role: 'authority', ref: 'authority/root' },
+  decidedAt: '2026-09-08T12:00:00.000Z',
+  evidence: ['ev-stale-001'],
+};
+
+const negativeResult = promoteState(
+  scenarioCanonicalV1,
+  proposedChange,
+  negativeGate,
+  negativeEvidence,
+  { now: Date.parse('2026-09-08T13:00:00.000Z') }
+);
+
+console.log('Negative: promoted=' + negativeResult.promoted +
+  ', decision=' + negativeResult.gateResult.decision);
+
+assert(negativeResult.promoted === false, 'stale evidence blocks promotion');
+assert(negativeResult.gateResult.decision === 'blocked', 'gate blocked on stale evidence');
+assert(negativeResult.canonical.version === scenarioCanonicalV1.version,
+  'canonical unchanged on negative replay');
+
+// --- PHASE 8: Human authority boundary ---
+console.log('');
+console.log('Scenario: authority boundary preserved');
+console.log('  - structurally validated: gate.authority.role === "authority"');
+console.log('  - NOT mechanically proven: authority.ref resolves to real authority');
+// This distinction must remain visible
+
+// ================================================================
 // SUMMARY
 // ================================================================
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`);
