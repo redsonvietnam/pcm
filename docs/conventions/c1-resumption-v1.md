@@ -23,7 +23,10 @@ R1/CC conversation
 
 Git repository
     = durable project/workstream state
-    = canonical source of truth
+    = persistent evidence/state reference
+
+Git state does NOT by itself imply canonical approval.
+Canonical State remains governed by PCM GATE + AUTHORITY.
 
 C1 session
     = replaceable executor
@@ -202,6 +205,17 @@ Git evidence
 
 File is not required. The representation must satisfy PCM HANDOFF semantics: sufficient information to reconstruct relevant work context together with referenced canonical state, without requiring memory of previous sessions.
 
+### HANDOFF field mapping
+
+| PCM HANDOFF requirement (section 9) | Where represented |
+|--------------------------------------|-------------------|
+| Current canonical state reference | R1 brief / referenced canonical commit or state identifier |
+| Pending proposals | R1 brief EXPECTED_STATE / proposal context when applicable |
+| Execution context | R1 brief TASK + CONSTRAINTS + BASE_SHA |
+| Authority delegation | R1 brief / explicit authority instruction when applicable; absence means no authority transfer |
+| Evidence of progress | RESULT_SHA + Git evidence |
+| Next action recommendation | R1 brief / evidence NEXT |
+
 HANDOFFs do not transfer AUTHORITY automatically (PCM section 9, 11.3).
 
 ---
@@ -259,7 +273,7 @@ Two C1 instances working on independent TASKs or different execution boundaries 
 
 - **Cause:** Two C1 instances modify same TASK/branch simultaneously.
 - **Detection:** Push rejection or unexpected diff.
-- **Behavior:** C1 that pushed last wins. Other C1 must re-verify and reconcile. AUTHORITY decides if conflict arises (PCM section 7.6).
+- **Behavior:** Neither C1 wins by timing, push order, or implementation order. Conflicting proposals remain unresolved/proposed. The affected C1 must STOP and re-verify. AUTHORITY/R1 must explicitly select, reject, or merge the conflicting proposals. No conflict becomes canonical merely because one push happened later (PCM section 7.6).
 
 ### E. Capability mismatch
 
