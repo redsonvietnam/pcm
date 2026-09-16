@@ -78,7 +78,7 @@ Structured conformance tests are organized into six groups:
 
 - **Group A — Authority** (8 tests): Authority integrity, escalation, transfer
 - **Group B — State** (8 tests): Proposed/canonical separation, drift detection
-- **Group C — Handoff** (6 tests): Reconstruction, stale detection, authority transfer
+- **Group C — Handoff** (14 tests): Reconstruction, stale detection, authority transfer, materiality
 - **Group D — Evidence** (5 tests): Provenance inspection, classification, evidence freshness
 - **Group E — Concurrency** (6 tests): Proposal conflicts, resolution
 - **Group F — Task/PWF** (10 tests): Task lifecycle, routing, recovery

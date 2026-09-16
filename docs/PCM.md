@@ -152,6 +152,14 @@ The principle remains: context memory from the previous session must not be requ
 
 HANDOFFs do not transfer AUTHORITY automatically. Authority transfer requires explicit delegation within the HANDOFF.
 
+### 9.1 HANDOFF Materiality
+
+A HANDOFF is valid only when it preserves the material work state necessary for the receiving actor to continue the transferred work. Information is material when its omission could reasonably change the next authorized action or cause a materially incorrect inference about what is established, unresolved, required, or permitted.
+
+Claims or context transmitted by a HANDOFF do not thereby become verified evidence, authority, approval, or canonical state.
+
+Materiality is evaluated relative to the transferred TASK, applicable constraints and acceptance/decision criteria, established and unresolved work state, and next authorized action—not relative to how much context the receiving actor personally prefers to receive.
+
 ## 10. GATE Semantics
 
 A GATE is a verification point where:
