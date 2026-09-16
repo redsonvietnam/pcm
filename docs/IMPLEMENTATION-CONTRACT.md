@@ -4,7 +4,7 @@
 **Status:** Proposed
 **Authority:** PCM-GATE-01
 **Architecture Reference:** Distribution Architecture v1.0
-**Framework Reference:** PCM v1.0, PWF v1.0
+**Framework Reference:** PCM v0.2, PWF v0.2
 
 ---
 

@@ -1,6 +1,6 @@
 # PCM/PWF Conformance Specification
 
-**Version:** 1.0 (Canonical)  
+**Version:** v0.2  
 **Status:** Approved — PCM-GATE-01  
 **Authority:** External Authority Gate  
 

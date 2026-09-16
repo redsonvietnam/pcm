@@ -1,6 +1,6 @@
 # Protocol for Canonical Management (PCM)
 
-**Version:** 1.0 (Canonical)  
+**Version:** v0.2  
 **Status:** Approved — PCM-GATE-01  
 **Authority:** External Authority Gate  
 
@@ -245,4 +245,4 @@ PCM versions follow semantic versioning:
 
 ## 17. Authority
 
-This specification is PROPOSED and pending external Authority Gate review. It does not represent canonical state until approved through proper GATE procedures.
+Canonical baseline: ab9f61914a50bf1e8ff0889057e19a2da1922d77. Post-Gate changes are not automatically canonical.

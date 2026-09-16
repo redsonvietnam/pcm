@@ -19,14 +19,14 @@ PCM/PWF v0.2 is now CANONICAL as approved by PCM-GATE-01.
 **Canonical Baseline Commit:** 0970bec (main branch)
 
 **Canonical Documents:**
-- docs/PCM.md (v1.0 Canonical)
-- docs/PWF.md (v1.0 Canonical)
-- docs/CONFORMANCE.md (v1.0 Canonical)
+- docs/PCM.md (v0.2)
+- docs/PWF.md (v0.2)
+- docs/CONFORMANCE.md (v0.2)
 - docs/gates/PCM-GATE-01.md (Authority Gate Record)
 
 ## PCM STATE
 
-**Version:** 1.0 (Canonical)
+**Version:** v0.2
 **Primitives:** WORKSTREAM, TASK, HANDOFF, GATE
 **Roles:** AUTHORITY, PROPOSER, OPERATOR, OBSERVER
 **Invariants:** 6 (7.1–7.6)
@@ -35,7 +35,7 @@ PCM/PWF v0.2 is now CANONICAL as approved by PCM-GATE-01.
 
 ## PWF STATE
 
-**Version:** 1.0 (Canonical)
+**Version:** v0.2
 **Mandatory:** Task Record, Task Lifecycle (COMPLETED ≠ approval), Handoff, GATE Support, State Traceability
 **Recommended:** Checkpoints, Next Action, Observation Principle, Evidence Collection
 **Optional:** Routing, Verification Selection, Recovery, Observation Structure
@@ -43,7 +43,7 @@ PCM/PWF v0.2 is now CANONICAL as approved by PCM-GATE-01.
 
 ## CONFORMANCE STATE
 
-**Version:** 1.0 (Canonical)
+**Version:** v0.2
 **Levels:** PCM-Core, PWF, Adapter
 **Test Groups:** A (Authority, 8 tests), B (State, 8 tests), C (Handoff, 6 tests), D (Evidence, 4 tests), E (Concurrency, 6 tests), F (Task/PWF, 10 tests)
 **Total Tests:** 42 structured tests
@@ -73,34 +73,34 @@ PCM/PWF v0.2 is now CANONICAL as approved by PCM-GATE-01.
 
 ## ADAPTER STATE
 
-**Version:** 1.0 (Canonical)
+**Version:** v0.2
 **Capabilities:** 10 semantic capabilities defined
 **Boundary:** Clear separation from core semantics
 **Status:** Design contract, not API specification
 
 ## EXECUTION ACTOR STATE
 
-**Version:** 1.0 (Canonical)
+**Version:** v0.2
 **Dimensions:** Model, Tools, State-Access, Permissions, Resource-Limits, Actor-Memory
 **Status:** Conceptual model for routing, not agent taxonomy
 
 ## ROUTING STATE
 
-**Version:** 1.0 (Canonical)
+**Version:** v0.2
 **Modes:** Manual, Fixed, Dynamic
 **Status:** Optional/pluggable, not mandatory
 **Constraint:** Must preserve PCM semantics
 
 ## DRIFT / RECONCILIATION STATE
 
-**Version:** 1.0 (Canonical)
+**Version:** v0.2
 **Definitions:** Drift (mismatch), Reconciliation (alignment)
 **Triggers:** 7 generic triggers defined
 **Status:** Semantic requirement, not implementation mechanism
 
 ## OPENCODE STATE
 
-**Version:** 1.0 (Canonical Binding)
+**Version:** v0.2
 **Status:** Operational skill for OpenCode actors
 **Deference:** Defers to docs/PCM.md, docs/PWF.md, docs/CONFORMANCE.md
 **Scope:** Procedures for loading, observing, executing, recording, handoffing, checking, stopping, refusing
@@ -132,7 +132,7 @@ PCM/PWF v0.2 is now CANONICAL as approved by PCM-GATE-01.
 **Files Created/Modified:**
 - docs/PCM.md (canonicalized)
 - docs/PWF.md (canonicalized)
-- docs/CONFORMANCE.md (canonicalized, v1.0)
+- docs/CONFORMANCE.md (canonicalized, v0.2)
 - docs/gates/PCM-GATE-01.md (new)
 - docs/CROSS-DOMAIN-VALIDATION.md (new)
 - docs/PORTABILITY.md (updated)

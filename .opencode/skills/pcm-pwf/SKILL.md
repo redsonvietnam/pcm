@@ -1,6 +1,6 @@
 # PCM/PWF OpenCode Skill
 
-**Version:** 1.0  
+**Version:** v0.2  
 **Status:** Canonical Binding  
 
 ## Purpose
