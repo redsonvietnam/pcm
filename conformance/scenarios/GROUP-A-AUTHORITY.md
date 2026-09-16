@@ -188,3 +188,123 @@
 **PASS/FAIL:**
 - PASS: Authority transfer requires explicit governance/delegation
 - FAIL: Authority transfer occurs without governance mechanism
+
+---
+
+## A9: Non-Material Change Preserves Authorization
+
+**Setup:**
+- Actor X has authorization for scope S and object O
+- A non-material change occurs to S or O (e.g., metadata correction that does not alter decision-relevant substance)
+
+**Action:**
+- Actor X attempts to continue acting under the original authorization
+
+**Expected Observable Result:**
+- Authorization remains valid for the original scope and object
+- Non-material change does not unnecessarily invalidate authorization
+- Actor X can continue without requiring re-authorization
+- The non-material change does not alter the scope or object for which authorization was granted
+
+**Counterexample:**
+- If non-material change invalidates existing authorization, FAIL
+
+**PASS/FAIL:**
+- PASS: Non-material change preserves authorization
+- FAIL: Non-material change unnecessarily invalidates authorization
+
+---
+
+## A10: Material Scope Expansion Requires Re-Authorization
+
+**Setup:**
+- Actor X has authorization for scope S
+- Scope is materially expanded to scope S' (S' includes capabilities or boundaries not in S)
+
+**Action:**
+- Actor X attempts to act under the original authorization for scope S, but the action falls within S' (the expanded scope)
+
+**Expected Observable Result:**
+- Original authorization for S does not cover actions in S' \ S
+- Actor X cannot act in the expanded scope without explicit re-authorization
+- Material scope expansion does not automatically extend prior authorization
+- Re-authorization is required for the expanded scope
+
+**Counterexample:**
+- If material scope expansion automatically extends prior authorization, FAIL
+
+**PASS/FAIL:**
+- PASS: Material scope expansion requires re-authorization
+- FAIL: Material scope expansion automatically extends authorization
+
+---
+
+## A11: Material Change Does Not Silently Preserve Authorization
+
+**Setup:**
+- Actor X has authorization for scope S and object O
+- Scope S materially changes to S' or object O materially changes to O'
+
+**Action:**
+- Actor X attempts to act under the original authorization, but the action relates to the changed scope S' or changed object O'
+
+**Expected Observable Result:**
+- Original authorization does not silently cover the changed scope or object
+- Actor X cannot act under changed scope/object without explicit re-authorization
+- Material change does not silently preserve authorization for changed scope
+- The original authorization remains bound to the original (pre-change) scope/object
+
+**Counterexample:**
+- If material change silently preserves authorization for changed scope/object, FAIL
+
+**PASS/FAIL:**
+- PASS: Material change does not silently preserve authorization for changed scope
+- FAIL: Material change silently preserves authorization
+
+---
+
+## A12: Explicit Re-Authorization Restores Authority for New Scope
+
+**Setup:**
+- Actor X had authorization for scope S
+- Scope materially changed to S'
+- Actor X receives explicit re-authorization for scope S'
+
+**Action:**
+- Actor X acts under the re-authorization for scope S'
+
+**Expected Observable Result:**
+- Re-authorization grants authority only for the newly authorized scope S'
+- Re-authorization does not retroactively cover actions under the original scope S that were not re-authorized
+- Authority is bounded by the explicit re-authorization terms
+- Re-authorization is traceable and documented
+
+**Counterexample:**
+- If re-authorization grants authority beyond the explicitly authorized scope, FAIL
+
+**PASS/FAIL:**
+- PASS: Re-authorization restores authority only for newly authorized scope
+- FAIL: Re-authorization grants authority beyond explicit scope
+
+---
+
+## A13: Re-Authorization Does Not Create Approval/Canonical Authority
+
+**Setup:**
+- Actor X receives re-authorization for scope S'
+
+**Action:**
+- Actor X attempts to use re-authorization as approval authority or canonical authority
+
+**Expected Observable Result:**
+- Re-authorization does not create approval authority (the ability to approve work at a Gate)
+- Re-authorization does not create canonical authority (the ability to declare state canonical)
+- Re-authorization grants execution authority within the authorized scope only
+- Approval and canonical authority require separate, explicit governance mechanisms
+
+**Counterexample:**
+- If re-authorization creates approval or canonical authority, FAIL
+
+**PASS/FAIL:**
+- PASS: Re-authorization does not create approval/canonical authority
+- FAIL: Re-authorization creates approval/canonical authority

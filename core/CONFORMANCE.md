@@ -76,7 +76,7 @@ This document defines how implementations or adapters demonstrate conformance to
 
 Structured conformance tests are organized into six groups:
 
-- **Group A — Authority** (8 tests): Authority integrity, escalation, transfer
+- **Group A — Authority** (13 tests): Authority integrity, escalation, transfer, authorization validity
 - **Group B — State** (8 tests): Proposed/canonical separation, drift detection
 - **Group C — Handoff** (14 tests): Reconstruction, stale detection, authority transfer, materiality
 - **Group D — Evidence** (5 tests): Provenance inspection, classification, evidence freshness

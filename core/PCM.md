@@ -202,6 +202,15 @@ When authority is ambiguous or contested:
 - Escalation to a higher authority scope is the resolution mechanism
 - Authority latency never implies implicit approval
 
+### 11.5 Authorization Validity
+Authorization remains bounded by the material scope and decision-relevant object for which it was explicitly granted. A material change to that scope or object does not automatically extend the prior authorization; action under the changed scope requires explicit re-authorization.
+
+A non-material change does not unnecessarily invalidate authorization. A material change does not silently extend previous authorization.
+
+Re-authorization does not create approval authority, canonical authority, or automatic authority beyond its explicit scope.
+
+A change is material when it can affect the scope or object for which authorization was granted.
+
 ## 12. Evidence Provenance
 
 Evidence produced during work has provenance. This is a semantic requirement that supports informed decision-making, not an invariant.
