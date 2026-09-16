@@ -16,7 +16,7 @@
 
 PCM/PWF v0.2 is now CANONICAL as approved by PCM-GATE-01.
 
-**Canonical Baseline Commit:** 0970bec (main branch)
+**Canonical Baseline Commit:** ab9f61914a50bf1e8ff0889057e19a2da1922d77
 
 **Canonical Documents:**
 - docs/PCM.md (v0.2)
