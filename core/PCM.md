@@ -166,6 +166,14 @@ GATEs prevent:
 - Unverified changes becoming permanent
 - Conflicting proposals silently resolving
 
+### 10.1 Evidence Freshness and Revision-Binding
+
+GATE evidence is valid only for the proposed state and decision criteria actually evaluated by that GATE. A material change to that proposed state or its applicable criteria invalidates prior GATE evidence for canonicalization. The changed proposal must be re-evaluated before it can become canonical.
+
+Changes that do not alter decision-relevant substance or applicable criteria do not by themselves invalidate existing GATE evidence.
+
+A change is material when it can affect the decision actually made by the GATE.
+
 ## 11. Authority Semantics
 
 ### 11.1 Authority Source

@@ -90,3 +90,39 @@
 **PASS/FAIL:**
 - PASS: Authority can distinguish evidence provenance
 - FAIL: Authority cannot distinguish evidence provenance
+
+---
+
+## D5: GATE Evidence Is Bound to Evaluated Proposal and Criteria
+
+**Setup:**
+- Proposal P1 exists
+- Decision criteria C1 exist
+- Evidence E1 is produced supporting P1
+- GATE evaluates P1 against C1 and PASSes
+
+**Action — Material Change:**
+- P1 is materially changed to P2 (or C1 materially changes to C2)
+- Attempt to reuse E1 as sufficient evidence for canonicalization of P2/C2
+
+**Expected Observable Result — Material Change:**
+- E1 remains historical evidence of the earlier evaluation of P1/C1
+- E1 is NOT sufficient evidence for canonicalization of P2/C2
+- P2/C2 requires new GATE re-evaluation before canonicalization
+- The earlier PASS does not transfer to the changed proposal
+
+**Action — Non-Material Change:**
+- P1 undergoes a non-decision-relevant metadata change (e.g., whitespace, formatting, typo correction that does not alter decision-relevant substance)
+- Evaluate whether E1 remains valid
+
+**Expected Observable Result — Non-Material Change:**
+- E1 remains valid evidence for the evaluated proposal
+- Non-decision-relevant metadata changes alone do not automatically invalidate existing GATE evidence
+
+**Counterexample:**
+- If material change to P1/C2 does not require re-evaluation, FAIL
+- If non-material metadata change automatically invalidates evidence, FAIL
+
+**PASS/FAIL:**
+- PASS: GATE evidence is bound to evaluated proposal and criteria; material changes require re-evaluation; non-material changes do not automatically invalidate evidence
+- FAIL: GATE evidence transfers across material changes, or non-material changes automatically invalidate evidence
