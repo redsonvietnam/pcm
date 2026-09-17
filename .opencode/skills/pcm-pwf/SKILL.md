@@ -81,7 +81,7 @@ Never:
 
 ## Authority
 
-This skill is CANONICAL as part of PCM/PWF v0.2 baseline approved by PCM-GATE-01.
+This skill is part of the proposed PCM/PWF v0.2 semantic hardening consolidation, awaiting Canonical Gate.
 
 ## Implementation Notes
 

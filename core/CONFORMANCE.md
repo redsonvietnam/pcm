@@ -1,8 +1,8 @@
 # PCM/PWF Conformance Specification
 
 **Version:** v0.2  
-**Status:** Approved — PCM-GATE-01  
-**Authority:** External Authority Gate  
+**Status:** Proposed — Semantic Hardening Consolidation  
+**Authority:** R1 — awaiting Canonical Gate  
 
 ## 1. Purpose
 
